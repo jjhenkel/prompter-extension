@@ -13,8 +13,8 @@ const LANGUAGE_MODEL_ID = 'copilot-gpt-4';
 export function activate(context: vscode.ExtensionContext) {
 
     // Define a Cat chat agent handler. 
-    const handler: vscode.ChatAgentRequestHandler = async ( => {
-request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, stream: vscode.ChatAgentResponseStream, token: vscode.CancellationToken): Promise<ICatChatAgentResult>        // To talk to an LLM in your subcommand handler implementation, your
+    const handler: vscode.ChatAgentRequestHandler = async( 
+        request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, stream: vscode.ChatAgentResponseStream, token: vscode.CancellationToken): Promise<ICatChatAgentResult>   => {     // To talk to an LLM in your subcommand handler implementation, your
         // extension can use VS Code's `requestChatAccess` API to access the Copilot API.
         // The GitHub Copilot Chat extension implements this provider.
         if (request.command == 'teach') {
@@ -22,8 +22,8 @@ request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, stream: vsco
             const topics = ['linked list', 'recursion', 'stack', 'queue', 'pointers'];
             const topic = topics[Math.floor(Math.random() * topics.length)];
             const messages = [
-				new vscode.LanguageModelSystemMessage('You are a cat! Your job is to explain computer science concepts in the funny manner of a cat. Always start your response by stating what concept you are explaining.'),
-				new vscode.LanguageModelUserMessage(topic)
+                new vscode.LanguageModelSystemMessage('You are a cat! Your job is to explain computer science concepts in the funny manner of a cat. Always start your response by stating what concept you are explaining.'),
+                new vscode.LanguageModelUserMessage(topic)
             ];
             const chatRequest = access.makeChatRequest(messages, {}, token);
             for await (const fragment of chatRequest.stream) {
@@ -39,8 +39,8 @@ request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, stream: vsco
         } else if (request.command == 'play') {
             const access = await vscode.lm.requestLanguageModelAccess(LANGUAGE_MODEL_ID);
             const messages = [
-				new vscode.LanguageModelSystemMessage('You are a cat that wants to play! Reply in a helpful way for a coder, but with the hidden meaning that all you want to do is play.'),
-				new vscode.LanguageModelUserMessage(request.prompt)
+                new vscode.LanguageModelSystemMessage('You are a cat that wants to play! Reply in a helpful way for a coder, but with the hidden meaning that all you want to do is play.'),
+                new vscode.LanguageModelUserMessage(request.prompt)
             ];
             const chatRequest = access.makeChatRequest(messages, {}, token);
             for await (const fragment of chatRequest.stream) {
@@ -50,8 +50,8 @@ request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, stream: vsco
         } else {
             const access = await vscode.lm.requestLanguageModelAccess(LANGUAGE_MODEL_ID);
             const messages = [
-				new vscode.LanguageModelSystemMessage('You are a cat! Reply in the voice of a cat, using cat analogies when appropriate.'),
-				new vscode.LanguageModelUserMessage(request.prompt)
+                new vscode.LanguageModelSystemMessage('You are a cat! Reply in the voice of a cat, using cat analogies when appropriate.'),
+                new vscode.LanguageModelUserMessage(request.prompt)
             ];
             const chatRequest = access.makeChatRequest(messages, {}, token);
             for await (const fragment of chatRequest.stream) {
@@ -93,18 +93,18 @@ request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, stream: vsco
                 const mood = Math.random() > 0.5 ? 'happy' : 'grumpy';
                 return [
                     {
-                        level: vscode.ChatVariableLevel.Short, 
-                        value: 'version 1.3 ' + mood 
+                        level: vscode.ChatVariableLevel.Short,
+                        value: 'version 1.3 ' + mood
                     },
                     {
-                        level: vscode.ChatVariableLevel.Medium, 
-                        value: 'I am a playful cat, version 1.3, and I am ' + mood 
+                        level: vscode.ChatVariableLevel.Medium,
+                        value: 'I am a playful cat, version 1.3, and I am ' + mood
                     },
                     {
-                        level: vscode.ChatVariableLevel.Full, 
-                        value: 'I am a playful cat, version 1.3, this version prefer to explain everything using mouse and tail metaphores. I am ' + mood 
+                        level: vscode.ChatVariableLevel.Full,
+                        value: 'I am a playful cat, version 1.3, this version prefer to explain everything using mouse and tail metaphores. I am ' + mood
                     }
-                ]
+                ];
             }
         }
     });

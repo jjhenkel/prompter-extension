@@ -7,17 +7,17 @@
     "vscode": "^1.86.0"
   },
   "extensionDependencies": [
-      "github.copilot-chat"
+    "github.copilot-chat"
   ],
   "categories": [
     "Other"
   ],
   "activationEvents": [
-      "onStartupFinished"
+    "onStartupFinished"
   ],
   "enabledApiProposals": [
-      "chatAgents2",
-      "languageModels"
+    "chatAgents2",
+    "languageModels"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -26,17 +26,24 @@
     "watch": "tsc -watch -p ./",
     "pretest": "yarn run compile && yarn run lint",
     "lint": "eslint src --ext ts",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "postbuild": "cpy '**/*' '!**/*.ts' . --cwd=src/ --no-overwrite --parents"
   },
   "devDependencies": {
-    "@types/vscode": "^1.86.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/vscode": "^1.86.0",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3",
     "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.9"
+    "@vscode/test-electron": "^2.3.9",
+    "eslint": "^8.56.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "copyfiles": "^2.4.1",
+    "openai": "^4.28.0"
   }
 }
