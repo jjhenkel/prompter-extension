@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
         request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, stream: vscode.ChatAgentResponseStream, token: vscode.CancellationToken): Promise<ICatChatAgentResult>   => {     // To talk to an LLM in your subcommand handler implementation, your
         // extension can use VS Code's `requestChatAccess` API to access the Copilot API.
         // The GitHub Copilot Chat extension implements this provider.
-        if (request.command == 'teach') {
+        if (request.command === 'teach') {
             const access = await vscode.lm.requestLanguageModelAccess(LANGUAGE_MODEL_ID);
             const topics = ['linked list', 'recursion', 'stack', 'queue', 'pointers'];
             const topic = topics[Math.floor(Math.random() * topics.length)];
@@ -36,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
             });
 
             return { metadata: { command: 'teach' } };
-        } else if (request.command == 'play') {
+        } else if (request.command === 'play') {
             const access = await vscode.lm.requestLanguageModelAccess(LANGUAGE_MODEL_ID);
             const messages = [
                 new vscode.LanguageModelSystemMessage('You are a cat that wants to play! Reply in a helpful way for a coder, but with the hidden meaning that all you want to do is play.'),
@@ -89,7 +89,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     vscode.chat.registerVariable('cat_context', 'Describes the state of mind and version of the cat', {
         resolve: (name, context, token) => {
-            if (name == 'cat_context') {
+            if (name === 'cat_context') {
                 const mood = Math.random() > 0.5 ? 'happy' : 'grumpy';
                 return [
                     {

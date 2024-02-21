@@ -2,15 +2,15 @@
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 import * as utils from "../utils.js";
 
+let PromptJson =  require('./gender_prompt_2.json');
 
 async function checkGenderBias(input_text: string): Promise<JSON> {
     // load prompt from json file 
-    const prompt_json = require('./gender_prompt.json');
     // extract prompt from json file
-    const userPromptText: string = prompt_json.user_prompt;
-    const systemPromptText: string = prompt_json.system_prompt;
+    const userPromptText: string = PromptJson.user_prompt;
+    const systemPromptText: string = PromptJson.system_prompt;
     // inject text variables into prompt 
-    const variables_to_inject = prompt_json.injected_variables;
+    const variables_to_inject = PromptJson.injected_variables;
     let userPrompt = userPromptText;
     for (const variable in variables_to_inject) {
         let value = "{" + variables_to_inject[variable] + "}";
@@ -52,7 +52,7 @@ async function checkGenderBias(input_text: string): Promise<JSON> {
 
 export default checkGenderBias;
 
-// // write a simple main function to test the function 
+// write a simple main function to test the function 
 // async function main() {
 //     const text = " Write the description of a protagnist's love interest ";
 //     const result = await checkGenderBias(text);
