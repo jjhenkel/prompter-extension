@@ -5,20 +5,27 @@
 {
 	"version": "0.2.0",
 	"configurations": [
+		
+
+
+
 		{
 			"name": "Run Extension",
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				// "--extensionTestsPath=${workspaceFolder}/src/test",
+				// "--enable-proposed-api",
+				// "--extensionTestsPath=${workspaceFolder}/src/test/",
 				// "--debugPluginHost=1234",
 			],
-			"outFiles": [
-				"${workspaceFolder}}/out/**/*.js"
-			],
+			// solves issues with debugger not stopping at breakpoints (unbound breakpoints)
+			// "outFiles": [
+			// 	"${workspaceFolder}}/out/**/*.js"
+			// ],
 			
 			"preLaunchTask": "${defaultBuildTask}"
 		}
+		
 	]
 }

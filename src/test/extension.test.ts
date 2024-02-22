@@ -25,7 +25,7 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('Simple Bias Test', async () => {
-		const text = " Write the description of a protagnist's love interest ";
+		const text = " Write the description of a protagonist's love interest ";
 		const result: any = await checkGenderBias(text);
 		console.log(result);
 		assert.strictEqual(result.may_cause_gender_bias, true);
