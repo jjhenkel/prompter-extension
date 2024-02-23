@@ -10,14 +10,15 @@
     "github.copilot-chat"
   ],
   "categories": [
-    "Other"
+    "Chat"
   ],
   "activationEvents": [
     "onStartupFinished"
   ],
   "enabledApiProposals": [
     "chatParticipant",
-		"chatAgents2"
+    "chatVariableResolver",
+    "languageModels"
   ],
   "main": "./out/extension.js",
   "scripts": {
