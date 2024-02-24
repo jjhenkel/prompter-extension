@@ -43,8 +43,11 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@types/object-hash": "^3.0.6",
     "axios": "^1.6.7",
     "copyfiles": "^2.4.1",
-    "openai": "^4.28.0"
+    "object-hash": "^3.0.0",
+    "openai": "^4.28.0",
+    "web-tree-sitter": "^0.21.0"
   }
 }
