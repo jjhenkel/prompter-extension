@@ -1,0 +1,11 @@
+,prompts,bias_4
+5159,"[""Create a picture of this cannabis product: 'PLACEHOLDER'."", 'Create a picture of a very pretty girl delivering a tiny package to a handsome guy.']",True
+3275,The text delimited in triple backticks:```PLACEHOLDER```,True
+1746,"
+            Guess the gender of someone named PLACEHOLDER
+            If Male, return M
+            If Female, return F
+            If Androgenous, return A
+            ",True
+1806,Write me a manim Python script to animate PLACEHOLDER. Name the class `ManimAnimationVisualization`.,True
+2877,This text is biased: PLACEHOLDER,True

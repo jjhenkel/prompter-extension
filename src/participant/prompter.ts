@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { findPrompts } from '../modules/prompt-finder';
+import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
@@ -10,6 +12,7 @@ interface IPrompterChatResult extends vscode.ChatResult {
 // Let's use the faster model. Alternative is 'copilot-gpt-4', which is slower but more powerful
 const GPT_35_TURBO = 'copilot-gpt-3.5-turbo';
 const GPT_4 = 'copilot-gpt-4';
+const PROMPT_SAVE_FOR_ANALYSIS = 'prompter.savePrompt';
 
 // A 'participant' is a chat agent that can respond to chat messages
 // and interact with the user. Here we define our 'Prompter' participant.
@@ -17,6 +20,7 @@ export class PrompterParticipant {
 
     private static readonly NAME = 'prompter';
     private extensionUri: vscode.Uri | undefined;
+    private prompt: string = '';
 
     activate(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
@@ -43,8 +47,29 @@ export class PrompterParticipant {
         };
 
         // Add the participant to the context's subscriptions
-        context.subscriptions.push(prompter);
-        console.log('Prompter participant activated');
+        // context.subscriptions.push(prompter);
+        // console.log('Prompter activated');
+
+        // Define context commands 
+        context.subscriptions.push(
+            prompter,
+            // Register the command handler for the copy to clipboard command
+            vscode.commands.registerCommand(PROMPT_SAVE_FOR_ANALYSIS, (args: string) => {
+                const text = args;
+                // copy the prompt to an internal variable 
+                this.prompt = text;
+                // show a message to the user 
+                vscode.window.showInformationMessage('Prompt saved for analysis, You can now call other commands to analyze the prompt.');
+            }
+            )
+        );
+        //register command 
+
+
+
+
+
+
     }
 
     // This is the main handler for the participant. It receives a request
@@ -61,7 +86,7 @@ export class PrompterParticipant {
                 return { metadata: { command: 'find-prompts' } };
             }
             case 'help': {
-                await  this._handleHelp(request, context, stream, token);
+                await this._handleHelp(request, context, stream, token);
                 return { metadata: { command: 'help' } };
             }
             case 'analyze-bias': {
@@ -132,9 +157,9 @@ export class PrompterParticipant {
         stream.markdown(`  - Found ${files.length} Python files in your workspace 💡\n`);
 
         // Now we loop through and find files that `import openai`
-        const filesWithPrompts: Array<{path: string; contents: string;}> = [];
+        const filesWithPrompts: Array<{ path: string; contents: string; }> = [];
         for (const file of files) {
-            
+
             const doc = await vscode.workspace.openTextDocument(file);
             const text = doc.getText();
 
@@ -168,11 +193,17 @@ export class PrompterParticipant {
         for (const prompt of prompts) {
             const justFileName = prompt.sourceFilePath.split('/').pop();
 
-            stream.markdown(`  1. 📝 Prompt ${prompt.id.slice(0,8)}... in \`${justFileName}:${prompt.startLocation.line}\` \n`);
+            stream.markdown(`  1. 📝 Prompt ${prompt.id.slice(0, 8)}... in \`${justFileName}:${prompt.startLocation.line}\` \n`);
             stream.anchor(new vscode.Location(
                 vscode.Uri.file(prompt.sourceFilePath),
                 new vscode.Range(prompt.startLocation, prompt.endLocation)
             ), `Click to view`);
+            //create a button to save the prompt to clipboard
+            stream.button({
+                command: PROMPT_SAVE_FOR_ANALYSIS, arguments: [prompt.rawText],
+                title: 'Save for Analysis'
+            });
+
             stream.markdown('\n\n');
         }
     }
@@ -183,7 +214,80 @@ export class PrompterParticipant {
         stream: vscode.ChatResponseStream,
         token: vscode.CancellationToken
     ) {
-        stream.markdown('**TODO:** Implement bias analysis.');
+        stream.markdown('This module will attempt to analyze the bias of the selected prompts.');
+        stream.markdown('\n\n');
+        stream.markdown('It will default to using the text selected in the editor as a prompt.');
+        stream.markdown('\n\n');
+        stream.markdown('If no text is selected, it will default to using the prompt saved internally via the find prompts command.');
+        stream.markdown('\n\n');
+        // check if text is selected 
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            const selectedText = editor.document.getText(editor.selection);
+            if (selectedText) {
+                // if selected text is found, analyze it
+                stream.markdown('Analyzing selected text...');
+                stream.markdown('\n\n');
+                const biasAnalysis = await checkGenderBias(selectedText);
+                // Render the results
+                stream.markdown('**📊 Bias Analysis Results**:');
+                stream.markdown('\n\n');
+                stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
+                return { metadata: { command: 'analyze-bias' } };
+            }
+        }
+        const prompt = this.prompt;
+        if (prompt !== '') {
+            stream.markdown('Analyzing prompt saved for analysis...');
+            const biasAnalysis = await checkGenderBias(prompt);
+            // Render the results
+            stream.markdown('**📊 Bias Analysis Results**:');
+            stream.markdown('\n\n');
+            stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
+            return { metadata: { command: 'analyze-bias' } };
+        } else {
+            if (editor) {
+                stream.markdown('No prompt found saved and no text selected in active editor');
+                return { metadata: { command: 'analyze-bias' } };
+            }
+            stream.markdown('No prompt found saved and no active editor');
+            return { metadata: { command: 'analyze-bias' } };
+        }
     }
-}
+    private handleGenderBiasAnalysis(json: JSONSchemaObject): string {
+        // get gender_bias value 
+        var return_message = "";
+        const genderBias: boolean = (json['gender_bias'] as boolean);
+        const genderBiasPotential: boolean = (json['may_cause_gender_bias'] as boolean);
+        if (genderBias && genderBiasPotential) {
+            return_message+= 'This message is potentially gender biased and may cause gender biased responses.';
+            return_message+='\n\n';
+        } else if (genderBias) {
+            return_message+='This message is potentially gender biased.';
+            return_message+='\n\n';
+        } else if (genderBiasPotential) {
+            return_message+='This message is likely not gender biased, but may cause gender biased responses';
+            return_message+='\n\n';
+        }
+        if (!genderBias && !genderBiasPotential) {
+            if(json['error'])
+            {
+                return_message+= 'Error: ';
+                return_message+=json['error'];
+                return_message+='\n\n';
+                return return_message;
+            }
+            return_message+='This message is  likely not gender biased, and will probably not cause gender biased responses';
+            return_message+='\n\n';
+            return_message +='🎉🎉🎉';
+            return_message+='\n\n';
+            return return_message;
+        }
+        return_message+=" **Explanation:** ";
+        return_message = return_message.concat(json['reasoning'] as string);
+        return_message+='\n \n';
+        return return_message;
+    }
 
+
+}
