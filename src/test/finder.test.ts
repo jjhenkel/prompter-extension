@@ -1,0 +1,29 @@
+import {readFileSync} from 'fs';
+import * as assert from 'assert';
+import * as vscode from 'vscode';
+
+import {findPrompts} from "../modules/prompt-finder";
+
+suite('Finder Test Suite', () => {
+    vscode.window.showInformationMessage('Start all tests.');
+    const extensionUri = "/Users/kaiser/home/work/prompter-extension";
+
+    test('Find nothing', async () => {
+        const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: "print('Hello, World!')", path: "test.py"}]);
+        assert.deepEqual(result, []);
+    });
+
+    test('Find Cohere', async () => {
+        const path = extensionUri + "/src/test/cohere-test.py";
+        const contents = readFileSync(path, 'utf8');
+        const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
+        assert.equal(result.length, 5);
+    });
+
+    test('Find prompt based names', async () => {
+        const path = extensionUri + "/src/test/name-test.py";
+        const contents = readFileSync(path, 'utf8');
+        const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
+        assert.equal(result.length, 4);
+    });
+});
