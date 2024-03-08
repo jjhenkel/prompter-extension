@@ -26,4 +26,11 @@ suite('Finder Test Suite', () => {
         const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
         assert.equal(result.length, 4);
     });
+
+    test('Find Template|Message classes', async () => {
+        const path = extensionUri + "/src/test/classes-test.py";
+        const contents = readFileSync(path, 'utf8');
+        const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
+        assert.equal(result.length, 3);
+    });
 });

@@ -74,9 +74,10 @@ export const findPrompts = async (
         const tree = parser.parse(file.contents);
         let results: PromptMetadata[] = [];
 
-        results = results.concat(await _findOpenAICompletionCreate(file.path, tree, pythonGrammar));
-        results = results.concat(await _findCohereChatCalls(file.path, tree, pythonGrammar));
-        results = results.concat(await _findPromptInName(file.path, tree, pythonGrammar));
+        results = results.concat(_findOpenAICompletionCreate(file.path, tree, pythonGrammar));
+        results = results.concat(_findCohereChatCalls(file.path, tree, pythonGrammar));
+        results = results.concat(_findPromptInName(file.path, tree, pythonGrammar));
+        results = results.concat(_findTemplateClass(file.path, tree, pythonGrammar));
 
         return results;
       } catch (e) {
@@ -95,40 +96,37 @@ const _getOpenAIPromptMetadataQuery = (
   argument: string,
 ) => {
   return language.query(
-    `
-        (call
-            function: (_)
-            arguments: (argument_list
-                (keyword_argument
-                    name: (identifier) @arg.name
-                        (#eq? @arg.name "${argument}")
-                    value: (_) @arg.value
-                )
-            )
+    `(call
+      function: (_)
+      arguments: (argument_list
+        (keyword_argument
+          name: (identifier) @arg.name
+          (#eq? @arg.name "${argument}")
+          value: (_) @arg.value
         )
-    `.trim(),
+      )
+    )`
   );
 };
 
-const _findOpenAICompletionCreate = async (
+const _findOpenAICompletionCreate = (
   sourceFilePath: string,
   tree: Parser.Tree,
   language: Parser.Language,
 ) => {
   const query = language.query(
-    `
-        (call 
-            function: (attribute object: (_) attribute: (_)) @call.name 
-                (#eq? @call.name "openai.Completion.create")
-            arguments: (argument_list (
-                (keyword_argument 
-                    name: (identifier) @prompt.name 
-                        (#eq? @prompt.name "prompt") 
-                    value: (_) @prompt.value
-                )
-            ))
-        ) @call.everything
-    `.trim(),
+    `(call 
+        function: (attribute object: (_) attribute: (_)) @call.name 
+          (#eq? @call.name "openai.Completion.create")
+        arguments: (argument_list (
+          (keyword_argument 
+            name: (identifier) @prompt.name 
+            (#eq? @prompt.name "prompt") 
+            value: (_) @prompt.value
+          )
+        )
+      )
+    ) @call.everything`
   );
 
   const captures = query.captures(tree.rootNode);
@@ -152,9 +150,7 @@ const _findOpenAICompletionCreate = async (
   };
 
   // Now, for each `call.everything` capture, we will look at nested props
-  for (let i = 0; i < callEverythingCaptures.length; i++) {
-    const callEverythingCapture = callEverythingCaptures[i];
-
+  for (let callEverythingCapture of callEverythingCaptures) {
     // Let's grab the matching prompt argument
     const promptArgument = captures.find((capture) => {
       // Want the prompt's value
@@ -224,7 +220,7 @@ const _findOpenAICompletionCreate = async (
   return results;
 };
 
-const _findCohereChatCalls = async (
+const _findCohereChatCalls = (
   sourceFilePath: string,
   tree: Parser.Tree,
   language: Parser.Language,
@@ -285,7 +281,7 @@ const _findCohereChatCalls = async (
     }
     let promptNode = promptArgument.node;
     if (promptArgument.name === "keyword.arg") {
-      promptNode = promptArgument.node.child(2) || promptArgument.node;
+      promptNode = promptArgument.node.child(2) ?? promptArgument.node;
     }
 
     // Add to results
@@ -295,7 +291,7 @@ const _findCohereChatCalls = async (
   return results;
 };
 
-const _findPromptInName = async (
+const _findPromptInName = (
   sourceFilePath: string,
   tree: Parser.Tree,
   language: Parser.Language,
@@ -327,7 +323,7 @@ const _findPromptInName = async (
     .filter((capture) => capture.name === "everything")
     .map((capture) => {
       // The 0th child is the assignment, then {0: name, 1: operator, 2: value}
-      const promptNode = capture.node.child(0)?.child(2);
+      const promptNode = capture.node.child(0)?.childForFieldName("right");
 
       // If we didn't find a prompt argument, skip this capture
       if (!promptNode) {
@@ -337,6 +333,44 @@ const _findPromptInName = async (
       return _createPromptMetadata(sourceFilePath, capture, promptNode);
     }
   ).filter((x) => x !== undefined) as PromptMetadata[];
+
+  return results;
+};
+
+const _findTemplateClass = (
+  sourceFilePath: string,
+  tree: Parser.Tree,
+  language: Parser.Language,
+) => {
+  const from_query = language.query(
+    `(call 
+      function: 
+        (attribute object: (identifier) @obj attribute: (identifier))
+        (#match? @obj "Template$")
+      arguments: (argument_list (_)* @arg)
+    ) @everything`
+  );
+
+  const template_query = language.query(
+    `(call 
+      function: (identifier) @obj (#match? @obj "(Template|Message)$")
+      arguments: (argument_list (_)* @arg)
+    ) @everything`
+  );
+
+  const results = from_query.captures(tree.rootNode)
+    .concat(template_query.captures(tree.rootNode))
+    .filter((capture) => capture.name === "everything")
+    .map((capture) => {
+      const promptNode = capture.node.childForFieldName("arguments")?.child(0);
+
+      // If we didn't find a prompt argument, skip this capture
+      if (!promptNode) {
+        return undefined;
+      }
+
+      return _createPromptMetadata(sourceFilePath, capture, capture.node);
+    }).filter((x) => x !== undefined) as PromptMetadata[];
 
   return results;
 };
