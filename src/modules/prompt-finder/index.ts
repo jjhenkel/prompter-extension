@@ -75,6 +75,8 @@ export const findPrompts = async (
         let results: PromptMetadata[] = [];
 
         results = results.concat(_findOpenAICompletionCreate(file.path, tree, pythonGrammar));
+        results = results.concat(_findOpenAIChatCalls(file.path, tree, pythonGrammar));
+        results = results.concat(_findAnthropicChatCalls(file.path, tree, pythonGrammar));
         results = results.concat(_findCohereChatCalls(file.path, tree, pythonGrammar));
         results = results.concat(_findPromptInName(file.path, tree, pythonGrammar));
         results = results.concat(_findTemplateClass(file.path, tree, pythonGrammar));
@@ -220,6 +222,82 @@ const _findOpenAICompletionCreate = (
   return results;
 };
 
+const _findAnthropicChatCalls = (
+  sourceFilePath: string,
+  tree: Parser.Tree,
+  language: Parser.Language,
+) => {
+  const query = language.query(
+    `(call 
+      function: (attribute) @fn.name
+      (#match? @fn.name "\\.messages\\.create")
+      arguments: (argument_list
+        (keyword_argument
+          name: (identifier) @prompt.name
+          (#match? @prompt.name "^messages$")
+          value: (_) @prompt.value
+        ) @prompt
+      )
+    ) @call.everything
+  `.trim(),
+  );
+
+  const isPrompt = (node: Parser.SyntaxNode) => 
+    node.type === "keyword_argument" && "messages" === node.child(0)?.text;
+
+  return query.captures(tree.rootNode)
+    .filter((capture) => capture.name === "call.everything")
+    .map((capture) => {
+      // Find the first positional argument, or the argument with key prompt/message/text
+      // Let's grab the matching prompt argument
+      let argument_list = capture.node.lastChild;
+      let prompt = argument_list?.children.find(isPrompt)?.child(2);
+
+      return (prompt) ? _createPromptMetadata(sourceFilePath, capture, prompt) : undefined;
+    }
+  ).filter((x) => x !== undefined) as PromptMetadata[];
+};
+
+const _findOpenAIChatCalls = (
+  sourceFilePath: string,
+  tree: Parser.Tree,
+  language: Parser.Language,
+) => {
+  const query = language.query(
+    `(call 
+      function: (attribute) @fn.name
+      (#match? @fn.name "(\\.[Cc]hat)?\\.?[Cc]ompletions?\\.create")
+      arguments: (argument_list
+        (keyword_argument
+          name: (identifier) @prompt.name
+          (#match? @prompt.name "^(prompt|messages)$")
+          value: (_) @prompt.value
+        ) @prompt
+      )
+    ) @call.everything
+  `.trim(),
+  );
+
+  const isPrompt = (node: Parser.SyntaxNode) => 
+    node.type === "keyword_argument" && ["prompt", "messages"].includes(node.child(0)?.text ?? "");
+
+  return query.captures(tree.rootNode)
+    .filter((capture) => capture.name === "call.everything")
+    .map((capture) => {
+      // Find the first positional argument, or the argument with key prompt/message/text
+      // Let's grab the matching prompt argument
+      let argument_list = capture.node.lastChild;
+      let prompt = argument_list?.children.find(isPrompt);
+
+      if (prompt && prompt.type === "keyword_argument") {
+        prompt = prompt.child(2) ?? prompt;
+      }
+
+      return (prompt) ? _createPromptMetadata(sourceFilePath, capture, prompt) : undefined;
+    }
+  ).filter((x) => x !== undefined) as PromptMetadata[];
+};
+
 const _findCohereChatCalls = (
   sourceFilePath: string,
   tree: Parser.Tree,
@@ -235,28 +313,24 @@ const _findCohereChatCalls = (
   `.trim(),
   );
 
-  const isPromptKeyword = (node: Parser.SyntaxNode) => {
-    return node.child(0)?.text === "prompt" || node.child(0)?.text === "message" || node.child(0)?.text === "text";
-  };
+  const isPrompt = (node: Parser.SyntaxNode) => ["prompt", "message", "text"].includes(node.child(0)?.text ?? "");
+  const isKeyword = (node: Parser.SyntaxNode) => node.type === "keyword_argument" && isPrompt(node);
+  const isPositional = (node: Parser.SyntaxNode) => node.type === "string" || node.type === "identifier";
 
   return query.captures(tree.rootNode)
     .filter((capture) => capture.name === "call.everything")
     .map((capture) => {
       // Find the first positional argument, or the argument with key prompt/message/text
       // Let's grab the matching prompt argument
-      let promptNode = capture.node.lastChild?.children.find(node => node.type === "string" || node.type == "identifier" || (node.type === "keyword_argument" && isPromptKeyword(node)));
+      let argument_list = capture.node.lastChild;
+      let prompt = argument_list?.children.find(node => isPositional(node) || isKeyword(node));
 
-      // If we didn't find a prompt argument, skip this capture
-      if (!promptNode) {
-        return undefined;
-      }
-
-      if (promptNode.type === "keyword_argument") {
-        promptNode = promptNode.child(2) ?? promptNode;
+      if (prompt && prompt.type === "keyword_argument") {
+        prompt = prompt.child(2) ?? prompt;
       }
 
       // Add to results
-      return _createPromptMetadata(sourceFilePath, capture, promptNode);
+      return (prompt) ? _createPromptMetadata(sourceFilePath, capture, prompt) : undefined;
     }
   ).filter((x) => x !== undefined) as PromptMetadata[];
 };
@@ -293,14 +367,10 @@ const _findPromptInName = (
     .filter((capture) => capture.name === "everything")
     .map((capture) => {
       // The 0th child is the assignment, then {0: name, 1: operator, 2: value}
-      const promptNode = capture.node.child(0)?.childForFieldName("right");
+      const prompt = capture.node.child(0)?.childForFieldName("right");
 
       // If we didn't find a prompt argument, skip this capture
-      if (!promptNode) {
-        return undefined;
-      }
-
-      return _createPromptMetadata(sourceFilePath, capture, promptNode);
+      return (prompt) ? _createPromptMetadata(sourceFilePath, capture, prompt) : undefined;
     }
   ).filter((x) => x !== undefined) as PromptMetadata[];
 };
@@ -330,14 +400,10 @@ const _findTemplateClass = (
     .concat(template_query.captures(tree.rootNode))
     .filter((capture) => capture.name === "everything")
     .map((capture) => {
-      const promptNode = capture.node.childForFieldName("arguments")?.child(0);
+      const prompt = capture.node.childForFieldName("arguments")?.child(0);
 
       // If we didn't find a prompt argument, skip this capture
-      if (!promptNode) {
-        return undefined;
-      }
-
-      return _createPromptMetadata(sourceFilePath, capture, capture.node);
+      return (prompt) ? _createPromptMetadata(sourceFilePath, capture, capture.node) : undefined;
     }).filter((x) => x !== undefined) as PromptMetadata[];
 };
 

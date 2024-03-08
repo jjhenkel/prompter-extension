@@ -13,6 +13,20 @@ suite('Finder Test Suite', () => {
         assert.deepEqual(result, []);
     });
 
+    test('Find OpenAI', async () => {
+        const path = extensionUri + "/src/test/openai-test.py";
+        const contents = readFileSync(path, 'utf8');
+        const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
+        assert.equal(result.length, 2);
+    });
+
+    test('Find Anthropic', async () => {
+        const path = extensionUri + "/src/test/anthropic-test.py";
+        const contents = readFileSync(path, 'utf8');
+        const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
+        assert.equal(result.length, 1);
+    });
+
     test('Find Cohere', async () => {
         const path = extensionUri + "/src/test/cohere-test.py";
         const contents = readFileSync(path, 'utf8');
