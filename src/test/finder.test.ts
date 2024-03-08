@@ -17,7 +17,7 @@ suite('Finder Test Suite', () => {
         const path = extensionUri + "/src/test/openai-test.py";
         const contents = readFileSync(path, 'utf8');
         const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
-        assert.equal(result.length, 2);
+        assert.equal(result.length, 3);
     });
 
     test('Find Anthropic', async () => {
@@ -31,7 +31,7 @@ suite('Finder Test Suite', () => {
         const path = extensionUri + "/src/test/cohere-test.py";
         const contents = readFileSync(path, 'utf8');
         const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
-        assert.equal(result.length, 5);
+        assert.equal(result.length, 7);
     });
 
     test('Find prompt based names', async () => {

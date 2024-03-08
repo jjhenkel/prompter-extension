@@ -80,6 +80,7 @@ export const findPrompts = async (
         results = results.concat(_findCohereChatCalls(file.path, tree, pythonGrammar));
         results = results.concat(_findPromptInName(file.path, tree, pythonGrammar));
         results = results.concat(_findTemplateClass(file.path, tree, pythonGrammar));
+        results = results.concat(_findMessageDictionary(file.path, tree, pythonGrammar));
 
         return results;
       } catch (e) {
@@ -403,7 +404,31 @@ const _findTemplateClass = (
       const prompt = capture.node.childForFieldName("arguments")?.child(0);
 
       // If we didn't find a prompt argument, skip this capture
-      return (prompt) ? _createPromptMetadata(sourceFilePath, capture, capture.node) : undefined;
+      return (prompt) ? _createPromptMetadata(sourceFilePath, capture, prompt) : undefined;
+    }).filter((x) => x !== undefined) as PromptMetadata[];
+};
+
+const _findMessageDictionary = (
+  sourceFilePath: string,
+  tree: Parser.Tree,
+  language: Parser.Language,
+) => {
+  const query = language.query(
+    `(dictionary
+      (pair
+        key: (string) @key
+        value: (_) @value
+      )(#match? @key "content|message")
+    ) @everything`
+  );
+
+  return query.captures(tree.rootNode)
+    .filter((capture) => capture.name === "everything")
+    .map((capture) => {
+      const prompt = query.captures(capture.node).filter((capture) => capture.name === "value").pop();
+
+      // If we didn't find a prompt argument, skip this capture
+      return (prompt) ? _createPromptMetadata(sourceFilePath, capture, prompt.node) : undefined;
     }).filter((x) => x !== undefined) as PromptMetadata[];
 };
 
