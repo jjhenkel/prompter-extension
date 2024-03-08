@@ -228,67 +228,37 @@ const _findCohereChatCalls = (
   const query = language.query(
     `(call 
       function: 
-        (attribute
-          object: (identifier)
-            attribute: (identifier) @call.name
-          )
-          (#match? @call.name "^(chat|summarize|generate)$")
-          arguments: (argument_list
-            (string)* @positional.arg.string
-            (identifier)* @positional.arg.identifier
-          	(keyword_argument
-            	name: (identifier) @kw.name
-              value: (_) @kw.value
-            )? @keyword.arg
-          ) @call.args
-      ) @call.everything
+        (attribute object: (identifier) attribute: (identifier) @call.name)
+        (#match? @call.name "^(chat|summarize|generate)$")
+      arguments: (argument_list)
+    ) @call.everything
   `.trim(),
   );
 
-  const captures = query.captures(tree.rootNode);
-  const results = [];
-
-  // First, we need to find all of the `call.everything` captures
-  // and give them a unique ID so we can then associate any capture
-  // that is _contained_ within them
-  const callEverythingCaptures = captures.filter(
-    (capture) => capture.name === "call.everything",
-  );
-
-  // Utility funcs
-  const isAncestor = (
-    node: Parser.SyntaxNode,
-    other: Parser.SyntaxNode,
-  ) => {
-    return node.parent?.parent?.parent?.equals(other) || node.parent?.parent?.equals(other);
-  };
   const isPromptKeyword = (node: Parser.SyntaxNode) => {
     return node.child(0)?.text === "prompt" || node.child(0)?.text === "message" || node.child(0)?.text === "text";
   };
 
-  // Now, for each `call.everything` capture, we will look at nested props
-  for (const callEverythingCapture of callEverythingCaptures) {
-    // Find the first positional argument, or the argument with key prompt/message/text
-    // Let's grab the matching prompt argument
-    const promptArgument = captures.filter(capture => isAncestor(capture.node, callEverythingCapture.node)).find((capture) => {
-      // Want the prompt's value
-      return capture.name === "positional.arg" || (capture.name === "keyword.arg" && isPromptKeyword(capture.node));
-    });
+  return query.captures(tree.rootNode)
+    .filter((capture) => capture.name === "call.everything")
+    .map((capture) => {
+      // Find the first positional argument, or the argument with key prompt/message/text
+      // Let's grab the matching prompt argument
+      let promptNode = capture.node.lastChild?.children.find(node => node.type === "string" || node.type == "identifier" || (node.type === "keyword_argument" && isPromptKeyword(node)));
 
-    // If we didn't find a prompt argument, skip this capture
-    if (!promptArgument) {
-      continue;
+      // If we didn't find a prompt argument, skip this capture
+      if (!promptNode) {
+        return undefined;
+      }
+
+      if (promptNode.type === "keyword_argument") {
+        promptNode = promptNode.child(2) ?? promptNode;
+      }
+
+      // Add to results
+      return _createPromptMetadata(sourceFilePath, capture, promptNode);
     }
-    let promptNode = promptArgument.node;
-    if (promptArgument.name === "keyword.arg") {
-      promptNode = promptArgument.node.child(2) ?? promptArgument.node;
-    }
-
-    // Add to results
-    results.push(_createPromptMetadata(sourceFilePath, callEverythingCapture, promptNode));
-  }
-
-  return results;
+  ).filter((x) => x !== undefined) as PromptMetadata[];
 };
 
 const _findPromptInName = (
@@ -318,7 +288,7 @@ const _findPromptInName = (
   `.trim(),
   );
 
-  const results = query.captures(tree.rootNode)
+  return query.captures(tree.rootNode)
     .concat(augmented_query.captures(tree.rootNode))
     .filter((capture) => capture.name === "everything")
     .map((capture) => {
@@ -333,8 +303,6 @@ const _findPromptInName = (
       return _createPromptMetadata(sourceFilePath, capture, promptNode);
     }
   ).filter((x) => x !== undefined) as PromptMetadata[];
-
-  return results;
 };
 
 const _findTemplateClass = (
@@ -358,7 +326,7 @@ const _findTemplateClass = (
     ) @everything`
   );
 
-  const results = from_query.captures(tree.rootNode)
+  return from_query.captures(tree.rootNode)
     .concat(template_query.captures(tree.rootNode))
     .filter((capture) => capture.name === "everything")
     .map((capture) => {
@@ -371,8 +339,6 @@ const _findTemplateClass = (
 
       return _createPromptMetadata(sourceFilePath, capture, capture.node);
     }).filter((x) => x !== undefined) as PromptMetadata[];
-
-  return results;
 };
 
 const _createPromptMetadata = (filepath: string, everything: Parser.QueryCapture, promptNode: Parser.SyntaxNode) => {
