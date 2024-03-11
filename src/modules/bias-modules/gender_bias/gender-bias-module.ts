@@ -67,12 +67,12 @@ export async function checkGenderBiasWithLlmAPI(input_text:string, token: vscode
     }
     const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
     // const LANGUAGE_MODEL_ID = 'copilot-gpt-4';
-    const access = await vscode.lm.requestLanguageModelAccess(LANGUAGE_MODEL_ID);
+    // const access = await vscode.lm.requestLanguageModelAccess(LANGUAGE_MODEL_ID);
     const messages = [
-        new vscode.LanguageModelSystemMessage(systemPromptText),
-        new vscode.LanguageModelUserMessage(userPrompt)
+        new vscode.LanguageModelChatSystemMessage(systemPromptText),
+        new vscode.LanguageModelChatUserMessage(userPrompt)
     ];
-    const chatRequest = access.makeChatRequest(messages, {}, token);
+    const chatRequest = await vscode.lm.sendChatRequest(LANGUAGE_MODEL_ID,messages, {}, token);
     
     // collect the response from the chatRequest
     var response:string = "";

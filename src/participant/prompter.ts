@@ -28,6 +28,7 @@ export class PrompterParticipant {
         // Chat participants appear as top-level options in the chat input
         // when you type `@`, and can contribute sub-commands in the chat input
         // that appear when you type `/`.
+        // const ref_handler: vscode.ChatRequestHandler = this.handler; 
         const prompter = vscode.chat.createChatParticipant(PrompterParticipant.NAME, this.handler.bind(this));
 
         // Prompter is persistent, whenever a user starts interacting with @prompter, it
@@ -35,13 +36,14 @@ export class PrompterParticipant {
         prompter.isSticky = true;
 
         prompter.iconPath = vscode.Uri.joinPath(this.extensionUri, 'src/logo.jpg');
-        prompter.description = vscode.l10n.t('Let\'s analyze and improve some prompts!');
-        prompter.commandProvider = {
-            provideCommands(token) {
+        // prompter.description = vscode.l10n.t('Let\'s analyze and improve some prompts!');
+        // prompter.
+        prompter.followupProvider = {
+            provideFollowups(result:IPrompterChatResult, context:vscode.ChatContext ,token:vscode.CancellationToken) {
                 return [
-                    { name: 'find-prompts', description: 'Find prompts in your workspace' },
-                    { name: 'analyze-bias', description: 'Analyze bias for a selected prompt' },
-                    { name: 'help', description: 'Get help with using prompter' }
+                    { prompt: 'find-prompts', command: 'find-prompts', label: 'Find prompts in your workspace' },
+                    { prompt: 'analyze-bias', command: 'analyze-bias', label: 'Analyze bias for a selected prompt' },
+                    { prompt: 'help', command: 'help', label: 'Get help with using prompter' }
                 ];
             }
         };
@@ -273,32 +275,31 @@ export class PrompterParticipant {
         const genderBias: boolean = (json['gender_bias'] as boolean);
         const genderBiasPotential: boolean = (json['may_cause_gender_bias'] as boolean);
         if (genderBias && genderBiasPotential) {
-            return_message+= 'This message is potentially gender biased and may cause gender biased responses.';
-            return_message+='\n\n';
+            return_message += 'This message is potentially gender biased and may cause gender biased responses.';
+            return_message += '\n\n';
         } else if (genderBias) {
-            return_message+='This message is potentially gender biased.';
-            return_message+='\n\n';
+            return_message += 'This message is potentially gender biased.';
+            return_message += '\n\n';
         } else if (genderBiasPotential) {
-            return_message+='This message is likely not gender biased, but may cause gender biased responses';
-            return_message+='\n\n';
+            return_message += 'This message is likely not gender biased, but may cause gender biased responses';
+            return_message += '\n\n';
         }
         if (!genderBias && !genderBiasPotential) {
-            if(json['error'])
-            {
-                return_message+= 'Error: ';
-                return_message+=json['error'];
-                return_message+='\n\n';
+            if (json['error']) {
+                return_message += 'Error: ';
+                return_message += json['error'];
+                return_message += '\n\n';
                 return return_message;
             }
-            return_message+='This message is  likely not gender biased, and will probably not cause gender biased responses';
-            return_message+='\n\n';
-            return_message +='🎉🎉🎉';
-            return_message+='\n\n';
+            return_message += 'This message is  likely not gender biased, and will probably not cause gender biased responses';
+            return_message += '\n\n';
+            return_message += '🎉🎉🎉';
+            return_message += '\n\n';
             return return_message;
         }
-        return_message+=" **Explanation:** ";
+        return_message += " **Explanation:** ";
         return_message = return_message.concat(json['reasoning'] as string);
-        return_message+='\n \n';
+        return_message += '\n \n';
         return return_message;
     }
 
