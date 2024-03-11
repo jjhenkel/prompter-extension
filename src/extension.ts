@@ -10,6 +10,9 @@ export function activate(context: vscode.ExtensionContext) {
         
     // });
     prompter.activate(context);
+    //show message that prompt was registered 
+    vscode.window.showInformationMessage('Prompter participant registered');
+    
     
 }
 
