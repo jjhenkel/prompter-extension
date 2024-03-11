@@ -22,32 +22,32 @@
   ],
   "contributes": {
     "chatParticipants": [
-        {
-            "name": "prompter",
-            "description": "Let's analyze and improve some prompts",
-            "commands": [
-                {
-                    "name": "find-prompts",
-                    "description": "Find prompts in your workspace"
-                },
-                {
-                    "name": "analyze-bias",
-                    "description": "Analyze bias for a selected prompt"
-                },
-                {
-                  "name": "help",
-                  "description": "Get help with using prompter"
-              }
-            ]
-        }
+      {
+        "name": "prompter",
+        "description": "Let's analyze and improve some prompts",
+        "commands": [
+          {
+            "name": "find-prompts",
+            "description": "Find prompts in your workspace"
+          },
+          {
+            "name": "analyze-bias",
+            "description": "Analyze bias for a selected prompt"
+          },
+          {
+            "name": "help",
+            "description": "Get help with using prompter"
+          }
+        ]
+      }
     ],
     "commands": [
-        {
-            "command": "prompter.savePrompt",
-            "title": "Save a prompt for further analysis"
-        }
+      {
+        "command": "prompter.savePrompt",
+        "title": "Save a prompt for further analysis"
+      }
     ]
-},
+  },
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "yarn run compile",
