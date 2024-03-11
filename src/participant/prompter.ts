@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { findPrompts } from '../modules/prompt-finder';
-import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import checkGenderBias from '../modules/bias-modules/gender_bias/gender-bias-module';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 
 interface IPrompterChatResult extends vscode.ChatResult {
@@ -30,12 +30,12 @@ export class PrompterParticipant {
         // that appear when you type `/`.
         const prompter = vscode.chat.createChatParticipant(PrompterParticipant.NAME, this.handler.bind(this));
 
-        // Prompter is persistant, whenever a user starts interacting with @prompter, it
+        // Prompter is persistent, whenever a user starts interacting with @prompter, it
         // will be added to the following messages
         prompter.isSticky = true;
 
         prompter.iconPath = vscode.Uri.joinPath(this.extensionUri, 'src/logo.jpg');
-        prompter.description = vscode.l10n.t('Let\'s analze and improve some prompts!');
+        prompter.description = vscode.l10n.t('Let\'s analyze and improve some prompts!');
         prompter.commandProvider = {
             provideCommands(token) {
                 return [
@@ -58,8 +58,21 @@ export class PrompterParticipant {
                 const text = args;
                 // copy the prompt to an internal variable 
                 this.prompt = text;
-                // show a message to the user 
-                vscode.window.showInformationMessage('Prompt saved for analysis, You can now call other commands to analyze the prompt.');
+                // show a message to the user in large window
+                
+                // vscode.window.showInformationMessage('Prompt saved for analysis');
+                const header = "Prompt saved for analysis,You can now call other commands from prompter to analyze the prompt.";
+                const options = {
+                    detail: "",
+                    modal: false,
+                };
+                vscode.window.showInformationMessage(header, options,... ["Ok","Cancel"]).then((selection) => {
+                    console.log(selection);
+                    if (selection === "Cancel") {
+                        vscode.window.showInformationMessage("Prompt not saved, saved prompt will be cleared.");
+                        this.prompt = '';
+                    }
+                });
             }
             )
         );
