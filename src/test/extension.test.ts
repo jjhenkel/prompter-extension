@@ -56,7 +56,7 @@ suite('Extension Test Suite', () => {
 	if __name__ == "__main__":
 		main()
 
-		""";`
+		""";`;
 	test('Simple Variable Injection Test', async () => {
 		const result: any = await checkVariableInjection(code_file_vulnerable);
 		console.log(result);

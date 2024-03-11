@@ -2,6 +2,17 @@
 
 This is the README for your extension "prompter". After writing up a brief description, we recommend including the following sections.
 
+
+## Links
+
+Project OneDrive [is here](https://umich-my.sharepoint.com/:f:/g/personal/dhiarzig_umich_edu/Ev3pZ_XU2T5EqZpzSqKhHLEBg8EQlqJscdtom5xcbeVN0g?e=n7ChnZ).
+
+
+PowerPoints [are here (subfolder in the OneDrive)](https://umich-my.sharepoint.com/:f:/g/personal/dhiarzig_umich_edu/Enev1_5qYTVBqQavBbOLXdsBE3ncvlZU74gZVPTUmEzBdA?e=GwHShL).
+
+Meeting minutes in OneNote [are here](https://umich-my.sharepoint.com/:o:/g/personal/dhiarzig_umich_edu/Em1Fn8viUIdNsMI_kNZkVKYBZbIZgBlVmJQIV2uBe2T8fQ).
+
+
 ## Features
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
