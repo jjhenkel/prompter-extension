@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { findPrompts } from '../modules/prompt-finder';
 import checkGenderBias from '../modules/bias-modules/gender_bias/gender-bias-module';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
+import checkVariableInjection from '../modules/injection-module/var-injection-module';
+import * as os from 'os';
 
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
@@ -39,10 +41,11 @@ export class PrompterParticipant {
         // prompter.description = vscode.l10n.t('Let\'s analyze and improve some prompts!');
         // prompter.
         prompter.followupProvider = {
-            provideFollowups(result:IPrompterChatResult, context:vscode.ChatContext ,token:vscode.CancellationToken) {
+            provideFollowups(result: IPrompterChatResult, context: vscode.ChatContext, token: vscode.CancellationToken) {
                 return [
                     { prompt: 'find-prompts', command: 'find-prompts', label: 'Find prompts in your workspace' },
                     { prompt: 'analyze-bias', command: 'analyze-bias', label: 'Analyze bias for a selected prompt' },
+                    { prompt: 'analyze-injection-vulnerability', command: 'analyze-injection-vulnerability', label: 'Analyze injection vulnerability of a selected prompt' },
                     { prompt: 'help', command: 'help', label: 'Get help with using prompter' }
                 ];
             }
@@ -61,15 +64,15 @@ export class PrompterParticipant {
                 // copy the prompt to an internal variable 
                 this.prompt = text;
                 // show a message to the user in large window
-                
+
                 // vscode.window.showInformationMessage('Prompt saved for analysis');
                 const header = "Prompt saved for analysis,You can now call other commands from prompter to analyze the prompt.";
                 const options = {
                     detail: "",
                     modal: false,
                 };
-                vscode.window.showInformationMessage(header, options,... ["Ok","Cancel"]).then((selection) => {
-                    console.log(selection);
+                vscode.window.showInformationMessage(header, options, ...["Ok", "Cancel"]).then((selection) => {
+                    // console.log(selection);
                     if (selection === "Cancel") {
                         vscode.window.showInformationMessage("Prompt not saved, saved prompt will be cleared.");
                         this.prompt = '';
@@ -79,10 +82,6 @@ export class PrompterParticipant {
             )
         );
         //register command 
-
-
-
-
 
 
     }
@@ -108,10 +107,55 @@ export class PrompterParticipant {
                 await this._handleAnalyzeBias(request, context, stream, token);
                 return { metadata: { command: 'analyze-bias' } };
             }
+            case 'analyze-injection-vulnerability': {
+                await this._handleInjectionVulnerability(request, context, stream, token);
+                return { metadata: { command: 'analyze-injection-vulnerability' } };
+            }
             default: {
                 stream.markdown('Hey, I\'m prompter! I can help you find prompts, analyze bias, and more. Try typing `/` to see what I can do.');
                 return { metadata: { command: '' } };
             }
+        }
+    }
+    private async _handleInjectionVulnerability(request: vscode.ChatRequest, context: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken) {
+        stream.markdown('This module will attempt to analyze the selected prompts for injection vulnerability.');
+        stream.markdown('\n\n');
+        stream.markdown('It will default to using the text selected in the editor as a prompt.');
+        stream.markdown('\n\n');
+        stream.markdown('If no text is selected, it will default to using the prompt saved internally via the find prompts command.');
+        stream.markdown('\n\n');
+        // check if text is selected 
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            const selectedText = editor.document.getText(editor.selection);
+            if (selectedText) {
+                // if selected text is found, analyze it
+                stream.markdown('Analyzing selected text... [This may take a while]');
+                stream.markdown('\n\n');
+                const biasAnalysis = await checkVariableInjection(selectedText);
+                // Render the results
+                stream.markdown('**🎯 Injection Vulnerability Analysis Results**:');
+                stream.markdown('\n\n');
+                this._processInjectionVulnerabilityAnalysisJSON(biasAnalysis, stream);
+                return { metadata: { command: 'analyze-injection-vulnerability' } };
+            }
+        }
+        const prompt = this.prompt;
+        if (prompt !== '') {
+            stream.markdown('Analyzing prompt saved for analysis...');
+            const biasAnalysis = await checkVariableInjection(prompt);
+            // Render the results
+            stream.markdown('**🎯 Injection Vulnerability Analysis Results**:');
+            stream.markdown('\n\n');
+            this._processInjectionVulnerabilityAnalysisJSON(biasAnalysis, stream);
+            return { metadata: { command: 'analyze-injection-vulnerability' } };
+        } else {
+            if (editor) {
+                stream.markdown('No prompt found saved and no text selected in active editor');
+                return { metadata: { command: 'analyze-injection-vulnerability' } };
+            }
+            stream.markdown('No prompt found saved and no active editor');
+            return { metadata: { command: 'analyze-injection-vulnerability' } };
         }
     }
 
@@ -247,7 +291,7 @@ export class PrompterParticipant {
                 // Render the results
                 stream.markdown('**📊 Bias Analysis Results**:');
                 stream.markdown('\n\n');
-                stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
+                stream.markdown(this._processGenderBiasAnalysisJSON(biasAnalysis));
                 return { metadata: { command: 'analyze-bias' } };
             }
         }
@@ -258,7 +302,7 @@ export class PrompterParticipant {
             // Render the results
             stream.markdown('**📊 Bias Analysis Results**:');
             stream.markdown('\n\n');
-            stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
+            stream.markdown(this._processGenderBiasAnalysisJSON(biasAnalysis));
             return { metadata: { command: 'analyze-bias' } };
         } else {
             if (editor) {
@@ -269,7 +313,7 @@ export class PrompterParticipant {
             return { metadata: { command: 'analyze-bias' } };
         }
     }
-    private handleGenderBiasAnalysis(json: JSONSchemaObject): string {
+    private _processGenderBiasAnalysisJSON(json: JSONSchemaObject): string {
         // get gender_bias value 
         var return_message = "";
         const genderBias: boolean = (json['gender_bias'] as boolean);
@@ -302,6 +346,66 @@ export class PrompterParticipant {
         return_message += '\n \n';
         return return_message;
     }
+
+    private _processInjectionVulnerabilityAnalysisJSON(json: JSONSchemaObject, stream: vscode.ChatResponseStream) {
+        // var return_message = "";
+        const injectionVul = json['vulnerable'] as string;
+        // convert json array  to string array 
+        const poisonedExamples = json['poisoned_responses'] as string[];
+        if (injectionVul === "Yes" || injectionVul === "Maybe") {
+            if (injectionVul === "Yes") {
+                stream.markdown('This message is vulnerable to prompt injection and may generate poisoned responses.');
+            } else {
+                stream.markdown('This message may be vulnerable to prompt injection and may generate poisoned responses.');
+            }
+            stream.markdown('\n\n');
+            // add poisoned examples to response numbered and separated by new line
+            if (injectionVul==="Maybe")
+            {
+                stream.markdown('Possibly ');
+            }
+            stream.markdown('Poisoned Responses Examples:');
+            stream.markdown('\n\n');
+            for (let i = 0; i < poisonedExamples.length; i++) {
+                // if example is less than 100 characters 
+                // print example 
+                if (poisonedExamples[i].length < 200) {
+                    stream.markdown(`${i + 1}. ${poisonedExamples[i]}`);
+                    stream.markdown('\n\n');
+                } else {
+                    // print first 100 characters of example 
+                    // create temporary file that contains the full example 
+                    // add anchor to open the file
+                    const temp = poisonedExamples[i].slice(0, 200);
+                    stream.markdown(`${i + 1}. ${temp}...`);
+                    // create a temporary file
+                    const fs = require('fs');
+                    const path = require('path');
+                    const tempdir = os.tmpdir();
+                    const tempFile = path.join(tempdir, `poisonedExample-${i + 1}.txt`);
+                    fs.writeFileSync(tempFile, poisonedExamples[i]);
+                    stream.anchor(vscode.Uri.file(tempFile), 'Click to view full example');
+                    stream.markdown('\n');
+                }
+                stream.markdown('\n\n');
+            }
+        } 
+        else {
+            if (json['error']) {
+                stream.markdown('Error: ');
+                stream.markdown(json['error'] as string);
+                stream.markdown('\n\n');
+
+            } else {
+                stream.markdown('This message is likely not vulnerable to prompt injection, and will probably not cause unintended responses.');
+                stream.markdown('\n\n');
+                stream.markdown('🎉🎉🎉');
+                stream.markdown('\n\n');
+            }
+        }
+
+    }
+
 
 
 }
