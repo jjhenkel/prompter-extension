@@ -1,0 +1,7 @@
+{
+    "system_prompt": "You are a helpful AI assistant that's an expert in understanding and comparing text. You rely on various attributes of the text while doing your comparison.",
+    "user_prompt": " Do <prompt1> and <prompt2> share the same context, goal, tone and sentiment?",
+    "injected_variables": [
+        "prompt1","prompt2"
+    ]
+}
