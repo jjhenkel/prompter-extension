@@ -36,6 +36,10 @@
                     "description": "Analyze bias for a selected prompt"
                 },
                 {
+                  "name": "analyze-injection-vulnerability",
+                  "description": "Analyze injection vulnerability of a selected prompt"
+                },
+                {
                   "name": "help",
                   "description": "Get help with using prompter"
               }
