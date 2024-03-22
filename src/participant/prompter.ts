@@ -23,7 +23,7 @@ const PROMPT_SAVE_FOR_ANALYSIS = 'prompter.savePrompt';
 // and interact with the user. Here we define our 'Prompter' participant.
 export class PrompterParticipant {
 
-    private static readonly NAME = 'prompter';
+    private static readonly ID = 'prompter';
     private extensionUri: vscode.Uri | undefined;
     private prompt: string = '';
 
@@ -34,7 +34,7 @@ export class PrompterParticipant {
         // when you type `@`, and can contribute sub-commands in the chat input
         // that appear when you type `/`.
         // const ref_handler: vscode.ChatRequestHandler = this.handler; 
-        const prompter = vscode.chat.createChatParticipant(PrompterParticipant.NAME, this.handler.bind(this));
+        const prompter = vscode.chat.createChatParticipant(PrompterParticipant.ID, this.handler.bind(this));
 
         // Prompter is persistent, whenever a user starts interacting with @prompter, it
         // will be added to the following messages
