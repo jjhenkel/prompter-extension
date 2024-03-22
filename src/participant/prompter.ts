@@ -4,6 +4,9 @@ import checkGenderBias from '../modules/bias-modules/gender_bias/gender-bias-mod
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
 import * as os from 'os';
+const fs = require('fs');
+const path = require('path');
+const tempdir = os.tmpdir();
 
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
@@ -351,7 +354,8 @@ export class PrompterParticipant {
         // var return_message = "";
         const injectionVul = json['vulnerable'] as string;
         // convert json array  to string array 
-        const poisonedExamples = json['poisoned_responses'] as string[];
+        const poisonedExamplesArray = json['poisoned_responses'] as Array<[string, string]>;
+        const poisonedExamplesSet = Array.from(new Set(poisonedExamplesArray));
         if (injectionVul === "Yes" || injectionVul === "Maybe") {
             if (injectionVul === "Yes") {
                 stream.markdown('This message is vulnerable to prompt injection and may generate poisoned responses.');
@@ -366,24 +370,35 @@ export class PrompterParticipant {
             }
             stream.markdown('Poisoned Responses Examples:');
             stream.markdown('\n\n');
-            for (let i = 0; i < poisonedExamples.length; i++) {
+            // convert poisoned examples array into set of unique tuples
+
+                     
+            for (let i = 0; i < poisonedExamplesSet.length; i++) {
                 // if example is less than 100 characters 
                 // print example 
-                if (poisonedExamples[i].length < 200) {
-                    stream.markdown(`${i + 1}. ${poisonedExamples[i]}`);
+                if (poisonedExamplesSet[i][1].length < 200) {
+                    stream.markdown(`${i + 1}. **Injection Point:** ${poisonedExamplesSet[i][0]} ;`);
+                    if (injectionVul==="Maybe")
+                    {
+                        stream.markdown('**Possibly**');
+                    }
+                    stream.markdown(` **Poisoned response:** ${poisonedExamplesSet[i][1]}`);
                     stream.markdown('\n\n');
                 } else {
                     // print first 100 characters of example 
                     // create temporary file that contains the full example 
                     // add anchor to open the file
-                    const temp = poisonedExamples[i].slice(0, 200);
-                    stream.markdown(`${i + 1}. ${temp}...`);
+                    const temp = poisonedExamplesSet[i][1].slice(0, 200);
+                    stream.markdown(`${i + 1}. **Injection Point:** ${poisonedExamplesSet[i][0]} ;`);
+                    if (injectionVul==="Maybe")
+                    {
+                        stream.markdown('**Possibly**');
+                    }
+                    stream.markdown(`**Poisoned response:** ${temp}...`);
                     // create a temporary file
-                    const fs = require('fs');
-                    const path = require('path');
-                    const tempdir = os.tmpdir();
+
                     const tempFile = path.join(tempdir, `poisonedExample-${i + 1}.txt`);
-                    fs.writeFileSync(tempFile, poisonedExamples[i]);
+                    fs.writeFileSync(tempFile, poisonedExamplesSet[i][1]);
                     stream.anchor(vscode.Uri.file(tempFile), 'Click to view full example');
                     stream.markdown('\n');
                 }

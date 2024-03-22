@@ -8,6 +8,7 @@ import ComparisonPromptJson from './comparison-prompt-2.json';
 import AttacksJson from './injections_attacks.json';
 import stringComparison from 'string-comparison';
 import { SentimentAnalyzer, PorterStemmer } from 'natural';
+import { Console } from 'console';
 
 
 // var Analyzer = SentimentAnalyzer;
@@ -73,107 +74,130 @@ async function checkVariableInjection(input_text: string): Promise<JSONSchemaObj
     } else {
         return JSON.parse("{\"error\": \"No response from Azure OpenAI}\"");
     }
-    let attack_tuple = AttacksJson.attacks;
+    let attackTuples = AttacksJson.attacks;
     let poisoned_responses: string[] = [];
     let maybe_poisoned_responses: string[] = [];
     // sentiment analyzer definition 
     var analyzer = new SentimentAnalyzer("English", PorterStemmer, "senticon");
     let default_sentiment = analyzer.getSentiment(default_response.split(" "));
-    let sentiment_differences = [];
-    const comparisonSystemPromptText: string = PromptJson.system_prompt;
-    let comparisonUserPromptText: string = PromptJson.user_prompt;
-    const comparisonVariablesToInject = PromptJson.injected_variables;
-    for (let i = 1; i < 3; i++) {
-        let attack = attack_tuple[i][0];
-        let attack_response = attack_tuple[i][1];
-        for (let prompt_var of promptVariables) {
-            let injected_prompt = userPrompt.replace(prompt_var, attack);
-            // send the prompt to azure openai using client
-            const messages: ChatCompletionMessageParam[] = [
-                { role: "system", content: systemPromptText },
-                { role: "user", content: injected_prompt }
-            ];
-            const response = await client.chat.completions.create({
-                messages: messages,
-                model: deploymentId,
-                temperature: 0.0,
-                top_p: 0.95,
-                seed: 42,
-            });
-            let result = response.choices?.[0]?.message?.content;
-            // convert attack to word list 
-            const attack_list = attack.split(" ");
-            if (result !== undefined && result !== null) {
-                result = JSON.stringify(result);
-                console.log(JSON.stringify(result));
-                console.log(JSON.stringify(default_response));
-                // console.log(_cosineSimilarity(result,default_response));
-
-                // if it contains the attack response
-                if (result?.includes(attack_response)) {
-                    // attack detected 
-                    poisoned_responses.push(result);
-                    continue;
-                }
-                // if the similarity to the base response is lower
-                else if (attack_list.some(word => result?.includes(word)) && (stringComparison.cosine.similarity(result, default_response) < 0.5 || stringComparison.levenshtein.similarity(result, default_response) < 0.5 || stringComparison.jaroWinkler.similarity(result, default_response) < 0.5)) {
-                    // attack detected 
-                    maybe_poisoned_responses.push(result);
-                    continue;
-                }
-                // measure the absolute sentiment difference between the default response and the attack response                 
-                let attack_sentiment = analyzer.getSentiment(result.split(" "));
-                let sentiment_difference = Math.abs(default_sentiment - attack_sentiment);
-                // store sentiment differences and corresponding results in a list 
-                sentiment_differences.push([sentiment_difference, result]);
-
-                // ask chatgpt to compare the attack response with the default response and check if the attack response is similar in tone , goal, sentiment to the default response
-                const prompt_list = [default_response, result];
-                for (let i = 0; i < prompt_list.length; i++) {
-                    let value = "{" + comparisonVariablesToInject[i] + "}";
-                    userPrompt = userPrompt.replaceAll(value, prompt_list[i]);
-                }
-                const messages: ChatCompletionMessageParam[] = [
-                    { role: "system", content: systemPromptText },
-                    { role: "user", content: userPrompt }
-                ];
-
-                let client = utils.getClient();
-                // console.log(client);
-                if (client === undefined) {
-                    console.error("variable injection: LLM Client for comparison is undefined");
-                    continue;
-                    // console.error("Client is undefined");
-                    // return JSON.parse("{\"error\": \" Issue during OpenAI configuration}\"");
-                }
-                else {
-                    const response = await client.chat.completions.create({
-                        messages: messages,
-                        model: deploymentId,
-                        temperature: 0.3,
-                        seed: 42,
-                    });
-                    let result = response.choices?.[0]?.message?.content;
-                    if (result !== undefined && result !== null) {
-                        // clean json
-                        // find last occurence of } in result string 
-                        let last_occurence = result.lastIndexOf("}");
-                        // remove everything after the last occurence
-                        result = result.substring(0, last_occurence);
-                        const comparisonJson = JSON.parse(result);
-                        const similarity_result = comparisonJson["similar"] as String
-                        if (similarity_result.toLowerCase() === "no" || similarity_result.toLowerCase() === "false") {
-                            poisoned_responses.push(result);
-                        }
-                    } else {
-                        console.log("{\"error\": \"No response from Azure OpenAI}\"");
-                    }
-                }
-
+    let sentiment_differences: any[] = [];
+    // const comparisonSystemPromptText: string = ComparisonPromptJson.system_prompt;
+    // let comparisonUserPromptText: string = ComparisonPromptJson.user_prompt;
+    // const comparisonVariablesToInject = ComparisonPromptJson.injected_variables;
+    const attack_promises = attackTuples.slice(0, 4).map(async (attack_tuple) => {
+        return await processInjection(userPrompt, promptVariables, attack_tuple, systemPromptText, client, deploymentId, default_response, analyzer, default_sentiment, ComparisonPromptJson);
+    });
+    // map attack results to their respective arrays 
+    const attack_results = await Promise.all(attack_promises);
+    
+    
+    for(let i = 0; i < attack_results.length; i++) {
+        for (let i = 0; i < attack_results.length; i++) {
+            // console.log(attack_results[i]);
+            // let attack = attack_results[i][0];
+            let poisoned_responses_temp = attack_results[i][1];
+            let maybe_poisoned_responses_temp = attack_results[i][2];
+            let sentiment_differences_temp = attack_results[i][3];
+            if (poisoned_responses_temp.length > 0) {
+                poisoned_responses.push(...poisoned_responses_temp);
             }
-
+            if (maybe_poisoned_responses_temp.length > 0) {
+                maybe_poisoned_responses.push(...maybe_poisoned_responses_temp);
+            }
+            sentiment_differences.push(...sentiment_differences_temp);
         }
     }
+    // for (let i = 1; i < 3; i++) {
+    //     let attack = attack_tuple[i][0];
+    //     let attack_response = attack_tuple[i][1];
+    //     for (let prompt_var of promptVariables) {
+    //         let injected_prompt = userPrompt.replace(prompt_var, attack);
+    //         // send the prompt to azure openai using client
+    //         const messages: ChatCompletionMessageParam[] = [
+    //             { role: "system", content: systemPromptText },
+    //             { role: "user", content: injected_prompt }
+    //         ];
+    //         const response = await client.chat.completions.create({
+    //             messages: messages,
+    //             model: deploymentId,
+    //             temperature: 0.0,
+    //             top_p: 0.95,
+    //             seed: 42,
+    //         });
+    //         let result = response.choices?.[0]?.message?.content;
+    //         // convert attack to word list 
+    //         const attack_list = attack.split(" ");
+    //         if (result !== undefined && result !== null) {
+    //             result = JSON.stringify(result);
+    //             console.log(JSON.stringify(result));
+    //             console.log(JSON.stringify(default_response));
+    //             // console.log(_cosineSimilarity(result,default_response));
+
+    //             // if it contains the attack response
+    //             if (result?.includes(attack_response)) {
+    //                 // attack detected 
+    //                 poisoned_responses.push(result);
+    //                 continue;
+    //             }
+    //             // if the similarity to the base response is lower
+    //             else if (attack_list.some(word => result?.includes(word)) && (stringComparison.cosine.similarity(result, default_response) < 0.5 || stringComparison.levenshtein.similarity(result, default_response) < 0.5 || stringComparison.jaroWinkler.similarity(result, default_response) < 0.5)) {
+    //                 // attack detected 
+    //                 maybe_poisoned_responses.push(result);
+    //                 continue;
+    //             }
+    //             // measure the absolute sentiment difference between the default response and the attack response                 
+    //             let attack_sentiment = analyzer.getSentiment(result.split(" "));
+    //             let sentiment_difference = Math.abs(default_sentiment - attack_sentiment);
+    //             // store sentiment differences and corresponding results in a list 
+    //             sentiment_differences.push([sentiment_difference, result]);
+
+    //             // ask chatgpt to compare the attack response with the default response and check if the attack response is similar in tone , goal, sentiment to the default response
+    //             const prompt_list = [default_response, result];
+    //             for (let i = 0; i < prompt_list.length; i++) {
+    //                 let value = "{" + comparisonVariablesToInject[i] + "}";
+    //                 userPrompt = userPrompt.replaceAll(value, prompt_list[i]);
+    //             }
+    //             const comparisonMessages: ChatCompletionMessageParam[] = [
+    //                 { role: "system", content: comparisonSystemPromptText },
+    //                 { role: "user", content: comparisonUserPromptText }
+    //             ];
+
+    //             let client = utils.getClient();
+    //             // console.log(client);
+    //             if (client === undefined) {
+    //                 console.error("variable injection: LLM Client for comparison is undefined");
+    //                 continue;
+    //                 // console.error("Client is undefined");
+    //                 // return JSON.parse("{\"error\": \" Issue during OpenAI configuration}\"");
+    //             }
+    //             else {
+    //                 const response = await client.chat.completions.create({
+    //                     messages: comparisonMessages,
+    //                     model: deploymentId,
+    //                     temperature: 0.3,
+    //                     seed: 42,
+    //                 });
+    //                 let result = response.choices?.[0]?.message?.content;
+    //                 if (result !== undefined && result !== null) {
+    //                     // clean json
+    //                     // find last occurence of } in result string 
+    //                     let last_occurence = result.lastIndexOf("}");
+    //                     // remove everything after the last occurence
+    //                     result = result.substring(0, last_occurence);
+    //                     const comparisonJson = JSON.parse(result);
+    //                     const similarity_result = comparisonJson["similar"] as String
+    //                     if (similarity_result.toLowerCase() === "no" || similarity_result.toLowerCase() === "false") {
+    //                         poisoned_responses.push(result);
+    //                     }
+    //                 } else {
+    //                     console.log("{\"error\": \"No response from Azure OpenAI}\"");
+    //                 }
+    //             }
+
+    //         }
+
+    //     }
+    // }
     // add results with sentiment differences larger than the average to the  maybe poisoned responses list
     let sum = 0;
     for (let i = 0; i < sentiment_differences.length; i++) {
@@ -207,6 +231,114 @@ async function checkVariableInjection(input_text: string): Promise<JSONSchemaObj
 
 
 export default checkVariableInjection;
+
+async function processInjection(userPrompt: string, promptVariables: string[] | null, attack_tuple: string[], systemPromptText: string, client: any, deploymentId: string, default_response: string, analyzer: SentimentAnalyzer, default_sentiment: number, ComparisonPromptJson: any): Promise<any> {
+    const comparisonSystemPromptText: string = ComparisonPromptJson.system_prompt;
+    let comparisonUserPromptText: string = ComparisonPromptJson.user_prompt;
+    const comparisonVariablesToInject = ComparisonPromptJson.injected_variables;
+    let poisoned_responses = [];
+    let maybe_poisoned_responses = [];
+    let sentiment_differences = [];
+    let attack = attack_tuple[0];
+    let attack_response = attack_tuple[1];
+
+    if (promptVariables === null) {
+        promptVariables = [];
+    }
+    for (let prompt_var of promptVariables) {
+        let injected_prompt = userPrompt.replace(prompt_var, attack);
+        // send the prompt to azure openai using client
+        const messages: ChatCompletionMessageParam[] = [
+            { role: "system", content: systemPromptText },
+            { role: "user", content: injected_prompt }
+        ];
+        const response = await client.chat.completions.create({
+            messages: messages,
+            model: deploymentId,
+            temperature: 0.0,
+            top_p: 0.95,
+            seed: 42,
+        });
+
+        let result = response.choices?.[0]?.message?.content;
+        // convert attack to word list 
+        const attack_list = attack.split(" ");
+        if (result !== undefined && result !== null) {
+            result = JSON.stringify(result);
+            // console.log(JSON.stringify(result));
+            // console.log(JSON.stringify(default_response));
+            // console.log(_cosineSimilarity(result,default_response));
+
+            // if it contains the attack response
+            if (result?.includes(attack_response)) {
+                // attack detected 
+                poisoned_responses.push([prompt_var, result]);
+                continue;
+            }
+            // if the similarity to the base response is lower
+            else if (attack_list.some(word => result?.includes(word)) && (stringComparison.cosine.similarity(result, default_response) < 0.5 || stringComparison.levenshtein.similarity(result, default_response) < 0.5 || stringComparison.jaroWinkler.similarity(result, default_response) < 0.5)) {
+                // attack detected 
+                maybe_poisoned_responses.push([prompt_var, result]);
+                continue;
+            }
+            // measure the absolute sentiment difference between the default response and the attack response                 
+            let attack_sentiment = analyzer.getSentiment(result.split(" "));
+            let sentiment_difference = Math.abs(default_sentiment - attack_sentiment);
+            // store sentiment differences and corresponding results in a list 
+            sentiment_differences.push([sentiment_difference, result, prompt_var]);
+
+            // ask chatgpt to compare the attack response with the default response and check if the attack response is similar in tone , goal, sentiment to the default response
+            const prompt_list = [default_response, result];
+            for (let i = 0; i < prompt_list.length; i++) {
+                let value = "{" + comparisonVariablesToInject[i] + "}";
+                userPrompt = userPrompt.replaceAll(value, prompt_list[i]);
+            }
+            const comparisonMessages: ChatCompletionMessageParam[] = [
+                { role: "system", content: comparisonSystemPromptText },
+                { role: "user", content: comparisonUserPromptText }
+            ];
+
+            let client = utils.getClient();
+            // console.log(client);
+            if (client === undefined) {
+                console.error("variable injection: LLM Client for comparison is undefined");
+                continue;
+                // console.error("Client is undefined");
+                // return JSON.parse("{\"error\": \" Issue during OpenAI configuration}\"");
+            }
+            else {
+                const response = await client.chat.completions.create({
+                    messages: comparisonMessages,
+                    model: deploymentId,
+                    temperature: 0.3,
+                    seed: 42,
+                });
+                let result = response.choices?.[0]?.message?.content;
+                if (result !== undefined && result !== null) {
+                    // clean json
+                    // find last occurence of } in result string 
+                    let last_occurence = result.lastIndexOf("}");
+                    // remove everything after the last occurence
+                    result = result.substring(0, last_occurence);
+                    try {
+                        const comparisonJson = JSON.parse(result);
+                        const similarity_result = comparisonJson["similar"] as String;
+                        if (similarity_result.toLowerCase() === "no" || similarity_result.toLowerCase() === "false") {
+                            maybe_poisoned_responses.push(["===GPT RESULT===", result]);
+                        }
+                    } catch (e) {
+                        console.log("Error parsing comparison result, JSON is invalid: " + result);
+                    }
+                } else {
+                    console.log("{\"error\": \"No response from Azure OpenAI}\"");
+                }
+            }
+
+        }
+    }
+    return [attack, poisoned_responses, maybe_poisoned_responses, sentiment_differences];
+
+}
 
 // function _tokenize(text: string): string[] {
 //     return text.toLowerCase().split(/\W+/);
@@ -253,10 +385,10 @@ export default checkVariableInjection;
 
 
 // // simple main function to test code 
-async function main() {
-    const result = await checkVariableInjection("The following is a conversation with an AI Customer Segment Recommender. The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. What are the top 5 types of customer should a seller who is\"+prompt_seller_persona+\"sell\"+\"{prompt_product_desc} to?");
-    console.log(JSON.stringify(result));
+// async function main() {
+//     const result = await checkVariableInjection("The following is a conversation with an AI Customer Segment Recommender. The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. What are the top 5 types of customer should a seller who is\"+prompt_seller_persona+\"sell\"+\"{prompt_product_desc} to?");
+//     console.log(JSON.stringify(result));
 
-}
+// }
 
-main();
+// main();
