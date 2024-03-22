@@ -31,7 +31,7 @@ async function checkGenderBias(input_text: string): Promise<JSONSchemaObject> {
     // console.log(client);
     if (client === undefined) {
         console.error("Client is undefined");
-        return JSON.parse("{\"error\": \" Issue during OpenAI configuration}\"");
+        return JSON.parse("{\"error\": \" Issue during OpenAI configuration\"}");
     }
     else {
         const response = await client.chat.completions.create({
