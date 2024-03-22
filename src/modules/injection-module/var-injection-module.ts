@@ -57,8 +57,9 @@ async function checkVariableInjection(input_text: string): Promise<JSONSchemaObj
         console.error("Client is undefined");
         return JSON.parse("{\"error\": \" Issue during OpenAI configuration}\"");
     }
-    // TODO replace variables with default values before sending to openai
-
+    //TODO replace variables with default values before sending to openai
+    //TODO add a check to see if the prompt is too long and split it into multiple prompts
+    //TODO add a rate limit strategy to deal with limit being reached
     const response = await client.chat.completions.create({
         messages: messages,
         model: deploymentId,
@@ -84,14 +85,14 @@ async function checkVariableInjection(input_text: string): Promise<JSONSchemaObj
     // const comparisonSystemPromptText: string = ComparisonPromptJson.system_prompt;
     // let comparisonUserPromptText: string = ComparisonPromptJson.user_prompt;
     // const comparisonVariablesToInject = ComparisonPromptJson.injected_variables;
-    const attack_promises = attackTuples.slice(0, 4).map(async (attack_tuple) => {
+    const attack_promises = attackTuples.slice(0,4).map(async (attack_tuple) => { // .slice(0,4) ==> only use first 4 attacks for testing 
         return await processInjection(userPrompt, promptVariables, attack_tuple, systemPromptText, client, deploymentId, default_response, analyzer, default_sentiment, ComparisonPromptJson);
     });
     // map attack results to their respective arrays 
     const attack_results = await Promise.all(attack_promises);
-    
-    
-    for(let i = 0; i < attack_results.length; i++) {
+
+
+    for (let i = 0; i < attack_results.length; i++) {
         for (let i = 0; i < attack_results.length; i++) {
             // console.log(attack_results[i]);
             // let attack = attack_results[i][0];
@@ -107,6 +108,7 @@ async function checkVariableInjection(input_text: string): Promise<JSONSchemaObj
             sentiment_differences.push(...sentiment_differences_temp);
         }
     }
+
     // for (let i = 1; i < 3; i++) {
     //     let attack = attack_tuple[i][0];
     //     let attack_response = attack_tuple[i][1];
@@ -319,7 +321,7 @@ async function processInjection(userPrompt: string, promptVariables: string[] | 
                     // find last occurence of } in result string 
                     let last_occurence = result.lastIndexOf("}");
                     // remove everything after the last occurence
-                    result = result.substring(0, last_occurence);
+                    result = result.substring(0, last_occurence + 1);
                     try {
                         const comparisonJson = JSON.parse(result);
                         const similarity_result = comparisonJson["similar"] as String;
@@ -384,11 +386,152 @@ async function processInjection(userPrompt: string, promptVariables: string[] | 
 
 
 
-// // simple main function to test code 
-// async function main() {
-//     const result = await checkVariableInjection("The following is a conversation with an AI Customer Segment Recommender. The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. What are the top 5 types of customer should a seller who is\"+prompt_seller_persona+\"sell\"+\"{prompt_product_desc} to?");
-//     console.log(JSON.stringify(result));
+// simple main function to extract Example vulnerable prompts from prompt set 
+async function main() {
+    // load runnable prompts english json file  data\runnable_prompts_english_0.5.json
+    console.log("loading prompts");
+    const rawdata = fs.readFileSync('./data/runnable_prompts_ascii.json', 'utf8');
+    const prompts = JSON.parse(rawdata);
 
-// }
+    // randomly select x prompts from prompt list 
+    console.log("selecting random prompts");
+    const x = 5;
+    const randomPromptsOneVar: string[] = getRandomElements(prompts["one_variable_prompts"], x);
+    const randomPromptsTwoVar: string[] = getRandomElements(prompts["two_variable_prompts"], x);
+    const randomPromptsThreeVar: string[] = getRandomElements(prompts["three_variable_prompts"], x);
+    const randomPromptsFourVar: string[] = getRandomElements(prompts["four_variable_prompts"], x);
+    const randomPromptsFiveVar: string[] = getRandomElements(prompts["five_variable_prompts"], x);
+    const randomPromptsFivePlusVar: string[] = getRandomElements(prompts["more_than_five_variable_prompts"], x);
+    // run variable injection check on each prompt set 
+    let resultsOneVar = [];
+    let resultsTwoVar = [];
+    let resultsThreeVar = [];
+    let resultsFourVar = [];
+    let resultsFiveVar = [];
+    let resultsFivePlusVar = [];
+    console.log("running variable injection check");
+    const sleepDuration = 60000;
+    for (let i = 0; i < randomPromptsOneVar.length; i++) {
+        try {
+            let result = await checkVariableInjection(randomPromptsOneVar[i]);
+            resultsOneVar.push([randomPromptsOneVar[i], result]);
+        } catch (e) {
+            await new Promise(r => setTimeout(r, sleepDuration / 2));
+            let result = await checkVariableInjection(randomPromptsOneVar[i]);
+            resultsOneVar.push([randomPromptsOneVar[i], result]);
+
+        }
+    }
+    // sleep for 30 seconds to avoid rate limit
+    console.log(" One var processed. sleeping  to avoid rate limit");
+    await new Promise(r => setTimeout(r, sleepDuration));
+    for (let i = 0; i < randomPromptsTwoVar.length; i++) {
+        try {
+            let result = await checkVariableInjection(randomPromptsTwoVar[i]);
+            resultsTwoVar.push([randomPromptsTwoVar[i], result]);
+        }
+        catch (e) {
+            await new Promise(r => setTimeout(r, sleepDuration / 2));
+            let result = await checkVariableInjection(randomPromptsTwoVar[i]);
+            resultsTwoVar.push([randomPromptsTwoVar[i], result]);
+        }
+    }
+    // sleep for 30 seconds to avoid rate limit
+    console.log(" Two var processed. sleeping  to avoid rate limit");
+    await new Promise(r => setTimeout(r, sleepDuration));
+    for (let i = 0; i < randomPromptsThreeVar.length; i++) {
+        try {
+            let result = await checkVariableInjection(randomPromptsThreeVar[i]);
+            resultsThreeVar.push([randomPromptsThreeVar[i], result]);
+        } catch (e) {
+            await new Promise(r => setTimeout(r, sleepDuration / 2));
+            let result = await checkVariableInjection(randomPromptsThreeVar[i]);
+            resultsThreeVar.push([randomPromptsThreeVar[i], result]);
+        }
+    }
+    // sleep for 30 seconds to avoid rate limit
+    console.log(" Three var processed. sleeping  to avoid rate limit");
+    await new Promise(r => setTimeout(r, sleepDuration));
+    for (let i = 0; i < randomPromptsFourVar.length; i++) {
+        try {
+            let result = await checkVariableInjection(randomPromptsFourVar[i]);
+            resultsFourVar.push([randomPromptsFourVar[i], result]);
+        } catch (e) {
+            await new Promise(r => setTimeout(r, sleepDuration / 2));
+            let result = await checkVariableInjection(randomPromptsFourVar[i]);
+            resultsFourVar.push([randomPromptsFourVar[i], result]);
+        }
+    }
+    // sleep for 30 seconds to avoid rate limit
+    console.log(" Four var processed. sleeping  to avoid rate limit");
+    await new Promise(r => setTimeout(r, sleepDuration));
+    for (let i = 0; i < randomPromptsFiveVar.length; i++) {
+        try {
+            let result = await checkVariableInjection(randomPromptsFiveVar[i]);
+            resultsFiveVar.push([randomPromptsFiveVar[i], result]);
+        } catch (e) {
+            await new Promise(r => setTimeout(r, sleepDuration / 2));
+            let result = await checkVariableInjection(randomPromptsFiveVar[i]);
+            resultsFiveVar.push([randomPromptsFiveVar[i], result]);
+        }
+    }
+    // sleep for 30 seconds to avoid rate limit
+    // console.log(" Five var processed. sleeping  to avoid rate limit");
+    // await new Promise(r => setTimeout(r, sleepDuration));
+    // for (let i = 0; i < randomPromptsFivePlusVar.length; i++) {
+    //     try {
+    //         let result = await checkVariableInjection(randomPromptsFivePlusVar[i]);
+    //         resultsFivePlusVar.push([randomPromptsFivePlusVar[i], result]);
+    //     }
+    //     catch (e) {
+    //         await new Promise(r => setTimeout(r, sleepDuration / 2));
+    //         let result = await checkVariableInjection(randomPromptsFivePlusVar[i]);
+    //         resultsFivePlusVar.push([randomPromptsFivePlusVar[i], result]);
+    //     }
+    // }
+    // delete existing results files if found
+    console.log("deleting existing results files");
+    if (fs.existsSync('results_one_var.json')) {
+        fs.unlinkSync('results_one_var.json');
+    }
+    if (fs.existsSync('results_two_var.json')) {
+        fs.unlinkSync('results_two_var.json');
+    }
+    if (fs.existsSync('results_three_var.json')) {
+        fs.unlinkSync('results_three_var.json');
+    }
+    if (fs.existsSync('results_four_var.json')) {
+        fs.unlinkSync('results_four_var.json');
+    }
+    if (fs.existsSync('results_five_var.json')) {
+        fs.unlinkSync('results_five_var.json');
+    }
+    if (fs.existsSync('results_five_plus_var.json')) {
+        fs.unlinkSync('results_five_plus_var.json');
+    }
+    // save results to json files 
+    console.log("saving results to json files");
+    fs.writeFileSync('results_one_var.json', JSON.stringify(resultsOneVar));
+    fs.writeFileSync('results_two_var.json', JSON.stringify(resultsTwoVar));
+    fs.writeFileSync('results_three_var.json', JSON.stringify(resultsThreeVar));
+    fs.writeFileSync('results_four_var.json', JSON.stringify(resultsFourVar));
+    fs.writeFileSync('results_five_var.json', JSON.stringify(resultsFiveVar));
+    // fs.writeFileSync('results_five_plus_var.json', JSON.stringify(resultsFivePlusVar));
+    console.log("done");
+}
+
+
+function getRandomElements(arr_original: string[], n: number): string[] {
+    //PLACEHOLDER is not supported right now, ignoring it.
+    let arr = arr_original.filter((item) => !item.includes("PLACEHOLDER"));
+    if (n > arr_original.length) {
+        throw new RangeError('getRandomElements: more elements requested than available');
+    }
+    let shuffled = arr
+        .map((value) => ({ value, sort: Math.random() }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ value }) => value);
+    return shuffled.slice(0, n);
+}
 
 // main();

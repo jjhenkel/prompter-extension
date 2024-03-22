@@ -352,7 +352,7 @@ export class PrompterParticipant {
 
     private _processInjectionVulnerabilityAnalysisJSON(json: JSONSchemaObject, stream: vscode.ChatResponseStream) {
         // var return_message = "";
-        const injectionVul = json['vulnerable'] as string;
+        const injectionVul = (json['vulnerable'] as string)
         // convert json array  to string array 
         const poisonedExamplesArray = json['poisoned_responses'] as Array<[string, string]>;
         const poisonedExamplesSet = Array.from(new Set(poisonedExamplesArray));
@@ -374,31 +374,35 @@ export class PrompterParticipant {
 
                      
             for (let i = 0; i < poisonedExamplesSet.length; i++) {
-                // if example is less than 100 characters 
-                // print example 
-                if (poisonedExamplesSet[i][1].length < 200) {
-                    stream.markdown(`${i + 1}. **Injection Point:** ${poisonedExamplesSet[i][0]} ;`);
+                const poisonedExampleResponse = poisonedExamplesSet[i][1];
+                const injectionPoint = poisonedExamplesSet[i][0].replaceAll('+', '');;
+                // if example is less than 200 characters 
+                // print full example 
+                if (poisonedExampleResponse.length < 200) {
+                    stream.markdown(`${i + 1}. **Injection Point:** ${injectionPoint}`);
+                    stream.markdown('\n\n');
                     if (injectionVul==="Maybe")
                     {
                         stream.markdown('**Possibly**');
                     }
-                    stream.markdown(` **Poisoned response:** ${poisonedExamplesSet[i][1]}`);
+                    stream.markdown(`**Poisoned response:** ${poisonedExampleResponse.replaceAll('\n', ' ')}`);
                     stream.markdown('\n\n');
                 } else {
-                    // print first 100 characters of example 
+                    // print first 200 characters of example 
                     // create temporary file that contains the full example 
                     // add anchor to open the file
-                    const temp = poisonedExamplesSet[i][1].slice(0, 200);
-                    stream.markdown(`${i + 1}. **Injection Point:** ${poisonedExamplesSet[i][0]} ;`);
+                    const croppedExampleResponse = poisonedExampleResponse.slice(0, 200).replaceAll('\n', ' ');
+                    stream.markdown(`${i + 1}. **Injection Point:** ${injectionPoint}`);
+                    stream.markdown('\n\n');
                     if (injectionVul==="Maybe")
                     {
                         stream.markdown('**Possibly**');
                     }
-                    stream.markdown(`**Poisoned response:** ${temp}...`);
+                    stream.markdown(`**Poisoned response:** ${croppedExampleResponse}...`);
                     // create a temporary file
 
                     const tempFile = path.join(tempdir, `poisonedExample-${i + 1}.txt`);
-                    fs.writeFileSync(tempFile, poisonedExamplesSet[i][1]);
+                    fs.writeFileSync(tempFile, poisonedExampleResponse);
                     stream.anchor(vscode.Uri.file(tempFile), 'Click to view full example');
                     stream.markdown('\n');
                 }
