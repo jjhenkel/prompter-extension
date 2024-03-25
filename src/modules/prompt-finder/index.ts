@@ -44,6 +44,7 @@ export type PromptMetadata = {
 };
 
 // This module defines a function, findPrompts, that takes
+
 // a tree sitter tree and users a cursor to walk the tree
 // and find prompts.
 export const findPrompts = async (

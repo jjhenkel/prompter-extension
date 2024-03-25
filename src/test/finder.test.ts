@@ -18,10 +18,6 @@ suite('Finder Test Suite', () => {
     });
 
     test('Find OpenAI', async () => {
-        // find current work directory
-        // const currentDirectory: string = __dirname;
-        // console.log(currentDirectory);
-
         const path = extensionUri + '/src/test/openai-test.py';
         const contents = readFileSync(path, 'utf8');
         const result = await findPrompts(vscode.Uri.parse(extensionUri), [
