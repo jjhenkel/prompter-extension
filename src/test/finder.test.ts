@@ -2,18 +2,24 @@ import {readFileSync} from 'fs';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-import {findPrompts} from "../modules/prompt-finder";
+import {findPrompts} from "../modules/prompt-finder";  
+// exit the out folder 
+const extensionUri = __dirname.split("\\").slice(0, -2).join("/");
+console.log(extensionUri);
 
 suite('Finder Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');
-    const extensionUri = "/Users/kaiser/home/work/prompter-extension";
-
+    
     test('Find nothing', async () => {
         const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: "print('Hello, World!')", path: "test.py"}]);
         assert.deepEqual(result, []);
     });
 
     test('Find OpenAI', async () => {
+        // find current work directory 
+        // const currentDirectory: string = __dirname;
+        // console.log(currentDirectory);
+
         const path = extensionUri + "/src/test/openai-test.py";
         const contents = readFileSync(path, 'utf8');
         const result = await findPrompts(vscode.Uri.parse(extensionUri), [{contents: contents, path: path}]);
