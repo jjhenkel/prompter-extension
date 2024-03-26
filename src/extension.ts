@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { PrompterParticipant } from './participant/prompter';
-import { commands } from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
     // Create and activate the prompter participant
