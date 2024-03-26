@@ -79,9 +79,11 @@
   },
   "dependencies": {
     "@types/object-hash": "^3.0.6",
+    "@types/sprintf-js": "^1.1.4",
     "axios": "^1.6.7",
     "object-hash": "^3.0.0",
     "openai": "^4.28.0",
+    "sprintf-js": "^1.1.3",
     "web-tree-sitter": "^0.21.0"
   },
   "prettier": {

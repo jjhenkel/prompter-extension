@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import Parser from 'web-tree-sitter';
 import hash from 'object-hash';
+import { canonizePrompt } from './canonization';
+import { parse } from 'path';
 
 // This type represents a hole in a prompt template.
 // Ex: "Hello, my name is {name}" would have a hole named "name"
@@ -41,12 +43,16 @@ export type PromptMetadata = {
         [key: string]: PromptParameter;
     };
     sourceFilePath: string;
+    promptNode?: Parser.SyntaxNode;
 };
 
 // This module defines a function, findPrompts, that takes
 
 // a tree sitter tree and users a cursor to walk the tree
 // and find prompts.
+
+let parserG: Parser | null = null;
+
 export const findPrompts = async (
     extensionUri: vscode.Uri,
     filesToScan: Array<{ contents: string; path: string }>
@@ -66,6 +72,7 @@ export const findPrompts = async (
     // Create a parser
     const parser = new Parser();
     parser.setLanguage(pythonGrammar);
+    parserG = parser;
 
     // Try and parse, then walk the tree and return results
     const promptMatches = await Promise.all(
@@ -127,6 +134,9 @@ const _getOpenAIPromptMetadataQuery = (
     );
 };
 
+export const toVSCodePosition = (position: Parser.Point) =>
+    new vscode.Position(position.row, position.column);
+
 const _findOpenAICompletionCreate = (
     sourceFilePath: string,
     tree: Parser.Tree,
@@ -158,8 +168,7 @@ const _findOpenAICompletionCreate = (
     );
 
     // Utility funcs
-    const toVSCodePosition = (position: Parser.Point) =>
-        new vscode.Position(position.row, position.column);
+
     const greatGreatGrandparentEquals = (
         node: Parser.SyntaxNode,
         other: Parser.SyntaxNode
@@ -509,9 +518,6 @@ const _createPromptMetadata = (
         }),
     } as PromptMetadata;
 
-    const toVSCodePosition = (position: Parser.Point) =>
-        new vscode.Position(position.row, position.column);
-
     // Grab some meta on the parent call
     promptMeta.rawTextOfParentCall = everything.node.text;
     promptMeta.parentCallStartLocation = toVSCodePosition(
@@ -533,8 +539,14 @@ const _createPromptMetadata = (
     );
 
     // The template holes and normalized text will be dealt with later
-    promptMeta.templateValues = {};
-    promptMeta.normalizedText = '';
+
+    [promptMeta.normalizedText, promptMeta.templateValues] = canonizePrompt(
+        promptMeta.sourceFilePath,
+        promptNode,
+        parserG as Parser
+    );
+
+    // promptMeta.promptNode = promptNode;
 
     return promptMeta;
 };
