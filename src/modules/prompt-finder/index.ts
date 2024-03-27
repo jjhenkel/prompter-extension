@@ -3,6 +3,7 @@ import Parser from 'web-tree-sitter';
 import hash from 'object-hash';
 import { canonizePrompt } from './canonization';
 import { parse } from 'path';
+import { patchValue } from './holeFilling';
 
 // This type represents a hole in a prompt template.
 // Ex: "Hello, my name is {name}" would have a hole named "name"
@@ -12,6 +13,7 @@ export type PromptTemplateHole = {
     rawText: string;
     startLocation: vscode.Position;
     endLocation: vscode.Position;
+    defaultValue?: any;
 };
 
 // This type represents a parameter associated with a prompt
@@ -43,7 +45,7 @@ export type PromptMetadata = {
         [key: string]: PromptParameter;
     };
     sourceFilePath: string;
-    promptNode?: Parser.SyntaxNode;
+    // promptNode?: Parser.SyntaxNode;
 };
 
 // This module defines a function, findPrompts, that takes
@@ -545,6 +547,21 @@ const _createPromptMetadata = (
         promptNode,
         parserG as Parser
     );
+
+    Promise.all(
+        Object.keys(promptMeta.templateValues).map(async (key) => {
+            promptMeta.templateValues[key].inferredType = 'string';
+            const response = await patchValue(
+                promptMeta,
+                promptMeta.templateValues[key]
+            );
+            if (response) {
+                promptMeta.templateValues[key].defaultValue = response['value'];
+            }
+        })
+    ).then(() => {
+        console.log('Template holes patched');
+    });
 
     // promptMeta.promptNode = promptNode;
 

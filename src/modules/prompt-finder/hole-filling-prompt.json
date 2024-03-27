@@ -1,0 +1,5 @@
+{
+    "system_prompt": "You are an AI assistant that makes educated guesses.  ",
+    "user_prompt": "You are provided with a prompt with integrated variables. these variables are contained within ellipses {}. For a specific variable x, generate a placeholder value, and respond with ONLY  a Json containing that value. \n\n  For example, for the prompt \"Hi my name is {name}\" and the variable name, you answer would be \"{variable: name, value: Jack} \".\n\n The prompt you need to process is {prompt_with_holes}, and the variable is {variable}.\n to better inform your guess, you should use the following context: {source_code_file}.\n",
+    "injected_variables": ["prompt_with_holes", "variable", "source_code_file"]
+}
