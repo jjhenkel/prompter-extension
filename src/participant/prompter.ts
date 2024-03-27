@@ -6,7 +6,7 @@ import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
         command: string;
-    }
+    };
 }
 
 // Let's use the faster model. Alternative is 'copilot-gpt-4', which is slower but more powerful
@@ -17,7 +17,6 @@ const PROMPT_SAVE_FOR_ANALYSIS = 'prompter.savePrompt';
 // A 'participant' is a chat agent that can respond to chat messages
 // and interact with the user. Here we define our 'Prompter' participant.
 export class PrompterParticipant {
-
     private static readonly ID = 'prompter';
     private extensionUri: vscode.Uri | undefined;
     private prompt: string = '';
@@ -28,50 +27,70 @@ export class PrompterParticipant {
         // Chat participants appear as top-level options in the chat input
         // when you type `@`, and can contribute sub-commands in the chat input
         // that appear when you type `/`.
-        // const ref_handler: vscode.ChatRequestHandler = this.handler; 
-        const prompter = vscode.chat.createChatParticipant(PrompterParticipant.ID, this.handler.bind(this));
+        // const ref_handler: vscode.ChatRequestHandler = this.handler;
+        const prompter = vscode.chat.createChatParticipant(
+            PrompterParticipant.ID,
+            this.handler.bind(this)
+        );
 
         // Prompter is persistent, whenever a user starts interacting with @prompter, it
         // will be added to the following messages
         prompter.isSticky = true;
 
-        prompter.iconPath = vscode.Uri.joinPath(this.extensionUri, 'src/logo.jpg');
+        prompter.iconPath = vscode.Uri.joinPath(
+            this.extensionUri,
+            'src/logo.jpg'
+        );
         // prompter.description = vscode.l10n.t('Let\'s analyze and improve some prompts!');
         // prompter.
         prompter.followupProvider = {
-            provideFollowups(result:IPrompterChatResult, context:vscode.ChatContext ,token:vscode.CancellationToken) {
+            provideFollowups(
+                result: IPrompterChatResult,
+                context: vscode.ChatContext,
+                token: vscode.CancellationToken
+            ) {
                 return [
-                    { prompt: 'find-prompts', command: 'find-prompts', label: 'Find prompts in your workspace' },
-                    { prompt: 'analyze-bias', command: 'analyze-bias', label: 'Analyze bias for a selected prompt' },
-                    { prompt: 'help', command: 'help', label: 'Get help with using prompter' }
+                    {
+                        prompt: 'find-prompts',
+                        command: 'find-prompts',
+                        label: 'Find prompts in your workspace',
+                    },
+                    {
+                        prompt: 'analyze-bias',
+                        command: 'analyze-bias',
+                        label: 'Analyze bias for a selected prompt',
+                    },
+                    {
+                        prompt: 'help',
+                        command: 'help',
+                        label: 'Get help with using prompter',
+                    },
                 ];
-            }
+            },
         };
 
         // Add the participant to the context's subscriptions
         // context.subscriptions.push(prompter);
         // console.log('Prompter activated');
 
-        // Define context commands 
+        // Define context commands
         context.subscriptions.push(
             prompter,
             // Register the command handler for the copy to clipboard command
-            vscode.commands.registerCommand(PROMPT_SAVE_FOR_ANALYSIS, (args: string) => {
-                const text = args;
-                // copy the prompt to an internal variable 
-                this.prompt = text;
-                // show a message to the user 
-                vscode.window.showInformationMessage('Prompt saved for analysis, You can now call other commands to analyze the prompt.');
-            }
+            vscode.commands.registerCommand(
+                PROMPT_SAVE_FOR_ANALYSIS,
+                (args: string) => {
+                    const text = args;
+                    // copy the prompt to an internal variable
+                    this.prompt = text;
+                    // show a message to the user
+                    vscode.window.showInformationMessage(
+                        'Prompt saved for analysis, You can now call other commands to analyze the prompt.'
+                    );
+                }
             )
         );
-        //register command 
-
-
-
-
-
-
+        //register command
     }
 
     // This is the main handler for the participant. It receives a request
@@ -96,7 +115,9 @@ export class PrompterParticipant {
                 return { metadata: { command: 'analyze-bias' } };
             }
             default: {
-                stream.markdown('Hey, I\'m prompter! I can help you find prompts, analyze bias, and more. Try typing `/` to see what I can do.');
+                stream.markdown(
+                    "Hey, I'm prompter! I can help you find prompts, analyze bias, and more. Try typing `/` to see what I can do."
+                );
                 return { metadata: { command: '' } };
             }
         }
@@ -107,7 +128,10 @@ export class PrompterParticipant {
         const spaces = str.match(/\n(\s*)/);
         if (spaces) {
             const numSpaces = spaces[1].length;
-            return str.split('\n').map(line => line.slice(numSpaces)).join('\n');
+            return str
+                .split('\n')
+                .map((line) => line.slice(numSpaces))
+                .join('\n');
         }
 
         return str.trim();
@@ -119,7 +143,8 @@ export class PrompterParticipant {
         stream: vscode.ChatResponseStream,
         token: vscode.CancellationToken
     ) {
-        stream.markdown(this._cleanUpMarkdownString(`
+        stream.markdown(
+            this._cleanUpMarkdownString(`
             Hey, I'm **prompter**!
             
             I can help you find prompts, analyze bias, and more.
@@ -128,7 +153,8 @@ export class PrompterParticipant {
               - \`/find-prompts\`: Find prompts in your workspace
               - \`/analyze-bias\`: Analyze bias for a selected prompt
               - \`/help\`: Show this help message
-        `));
+        `)
+        );
     }
 
     private async _handleFindPrompts(
@@ -156,12 +182,13 @@ export class PrompterParticipant {
         }
 
         // Let's update the chat and say we found some files
-        stream.markdown(`  - Found ${files.length} Python files in your workspace 💡\n`);
+        stream.markdown(
+            `  - Found ${files.length} Python files in your workspace 💡\n`
+        );
 
         // Now we loop through and find files that `import openai`
-        const filesWithPrompts: Array<{ path: string; contents: string; }> = [];
+        const filesWithPrompts: Array<{ path: string; contents: string }> = [];
         for (const file of files) {
-
             const doc = await vscode.workspace.openTextDocument(file);
             const text = doc.getText();
 
@@ -175,7 +202,9 @@ export class PrompterParticipant {
 
         // Now we can update the chat with the files we found
         if (filesWithPrompts.length > 0) {
-            stream.markdown(`  - Found ${filesWithPrompts.length} files that match coarse filters 🎉\n`);
+            stream.markdown(
+                `  - Found ${filesWithPrompts.length} files that match coarse filters 🎉\n`
+            );
         } else {
             stream.markdown('  - No files with prompts found 😢\n');
         }
@@ -186,7 +215,9 @@ export class PrompterParticipant {
             stream.markdown('  - No prompts found in any files 😢\n');
             return;
         } else {
-            stream.markdown(`  - Found ${prompts.length} prompts in your workspace!\n\n`);
+            stream.markdown(
+                `  - Found ${prompts.length} prompts in your workspace!\n\n`
+            );
         }
 
         stream.markdown('**📖 Here are the prompts I found**:\n');
@@ -195,15 +226,21 @@ export class PrompterParticipant {
         for (const prompt of prompts) {
             const justFileName = prompt.sourceFilePath.split('/').pop();
 
-            stream.markdown(`  1. 📝 Prompt ${prompt.id.slice(0, 8)}... in \`${justFileName}:${prompt.startLocation.line}\` \n`);
-            stream.anchor(new vscode.Location(
-                vscode.Uri.file(prompt.sourceFilePath),
-                new vscode.Range(prompt.startLocation, prompt.endLocation)
-            ), `Click to view`);
+            stream.markdown(
+                `  1. 📝 Prompt ${prompt.id.slice(0, 8)}... in \`${justFileName}:${prompt.startLocation.line}\` \n`
+            );
+            stream.anchor(
+                new vscode.Location(
+                    vscode.Uri.file(prompt.sourceFilePath),
+                    new vscode.Range(prompt.startLocation, prompt.endLocation)
+                ),
+                `Click to view`
+            );
             //create a button to save the prompt to clipboard
             stream.button({
-                command: PROMPT_SAVE_FOR_ANALYSIS, arguments: [prompt.rawText],
-                title: 'Save for Analysis'
+                command: PROMPT_SAVE_FOR_ANALYSIS,
+                arguments: [prompt.rawText],
+                title: 'Save for Analysis',
             });
 
             stream.markdown('\n\n');
@@ -216,13 +253,19 @@ export class PrompterParticipant {
         stream: vscode.ChatResponseStream,
         token: vscode.CancellationToken
     ) {
-        stream.markdown('This module will attempt to analyze the bias of the selected prompts.');
+        stream.markdown(
+            'This module will attempt to analyze the bias of the selected prompts.'
+        );
         stream.markdown('\n\n');
-        stream.markdown('It will default to using the text selected in the editor as a prompt.');
+        stream.markdown(
+            'It will default to using the text selected in the editor as a prompt.'
+        );
         stream.markdown('\n\n');
-        stream.markdown('If no text is selected, it will default to using the prompt saved internally via the find prompts command.');
+        stream.markdown(
+            'If no text is selected, it will default to using the prompt saved internally via the find prompts command.'
+        );
         stream.markdown('\n\n');
-        // check if text is selected 
+        // check if text is selected
         const editor = vscode.window.activeTextEditor;
         if (editor) {
             const selectedText = editor.document.getText(editor.selection);
@@ -249,7 +292,9 @@ export class PrompterParticipant {
             return { metadata: { command: 'analyze-bias' } };
         } else {
             if (editor) {
-                stream.markdown('No prompt found saved and no text selected in active editor');
+                stream.markdown(
+                    'No prompt found saved and no text selected in active editor'
+                );
                 return { metadata: { command: 'analyze-bias' } };
             }
             stream.markdown('No prompt found saved and no active editor');
@@ -257,18 +302,22 @@ export class PrompterParticipant {
         }
     }
     private handleGenderBiasAnalysis(json: JSONSchemaObject): string {
-        // get gender_bias value 
-        var return_message = "";
-        const genderBias: boolean = (json['gender_bias'] as boolean);
-        const genderBiasPotential: boolean = (json['may_cause_gender_bias'] as boolean);
+        // get gender_bias value
+        var return_message = '';
+        const genderBias: boolean = json['gender_bias'] as boolean;
+        const genderBiasPotential: boolean = json[
+            'may_cause_gender_bias'
+        ] as boolean;
         if (genderBias && genderBiasPotential) {
-            return_message += 'This message is potentially gender biased and may cause gender biased responses.';
+            return_message +=
+                'This message is potentially gender biased and may cause gender biased responses.';
             return_message += '\n\n';
         } else if (genderBias) {
             return_message += 'This message is potentially gender biased.';
             return_message += '\n\n';
         } else if (genderBiasPotential) {
-            return_message += 'This message is likely not gender biased, but may cause gender biased responses';
+            return_message +=
+                'This message is likely not gender biased, but may cause gender biased responses';
             return_message += '\n\n';
         }
         if (!genderBias && !genderBiasPotential) {
@@ -278,17 +327,16 @@ export class PrompterParticipant {
                 return_message += '\n\n';
                 return return_message;
             }
-            return_message += 'This message is  likely not gender biased, and will probably not cause gender biased responses';
+            return_message +=
+                'This message is  likely not gender biased, and will probably not cause gender biased responses';
             return_message += '\n\n';
             return_message += '🎉🎉🎉';
             return_message += '\n\n';
             return return_message;
         }
-        return_message += " **Explanation:** ";
+        return_message += ' **Explanation:** ';
         return_message = return_message.concat(json['reasoning'] as string);
         return_message += '\n \n';
         return return_message;
     }
-
-
 }
