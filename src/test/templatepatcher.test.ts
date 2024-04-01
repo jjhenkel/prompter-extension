@@ -3,9 +3,7 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import checkGenderBias from '../modules/bias-modules/gender-bias-module';
-import * as myExtension from '../extension';
-import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
+import { findPrompts } from '../modules/prompt-finder';
 import { readFileSync } from 'fs';
 import { fillHoles } from '../modules/prompt-finder/hole-patching';
 const packageJson = require('../../package.json');

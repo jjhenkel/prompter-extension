@@ -1,11 +1,7 @@
 import * as vscode from 'vscode';
 import Parser from 'web-tree-sitter';
 import hash from 'object-hash';
-import {
-    canonizeWithCopilotGPT,
-    canonizeWithTreeSitterANDCopilotGPT,
-} from './canonization';
-import { parse } from 'path';
+import { canonizeWithTreeSitterANDCopilotGPT } from './canonization';
 // import { patchValue } from './holePatching';
 
 // This type represents a hole in a prompt template.

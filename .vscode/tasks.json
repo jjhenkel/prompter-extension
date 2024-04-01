@@ -21,7 +21,13 @@
             "detail": "Uses the environments SHELL to wipe TSC build dirs, and the dirs contents",
             "type": "shell",
             "command": "rm",
-            "args": ["-R", "-d", "-v", "${workspaceFolder}/out"],
+            "args": [
+                "-R",
+                "-d",
+                "-v",
+                "${workspaceFolder}/out"
+                // "${workspaceFolder}/types"
+            ],
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated",

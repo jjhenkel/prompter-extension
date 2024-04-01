@@ -3,11 +3,8 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import checkGenderBias from '../modules/bias-modules/gender-bias-module';
-import * as myExtension from '../extension';
-import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
+import { findPrompts } from '../modules/prompt-finder';
 import { readFileSync } from 'fs';
-import { canonizePromptWithTreeSitter } from '../modules/prompt-finder/canonization';
 const extensionUri = vscode.Uri.parse(
     __dirname.split('\\').slice(0, -2).join('/')
 );
