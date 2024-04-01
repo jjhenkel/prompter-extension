@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { findPrompts } from '../modules/prompt-finder';
+import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
 import checkGenderBias from '../modules/bias-modules/gender_bias/gender-bias-module';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
@@ -7,6 +7,7 @@ import * as os from 'os';
 const fs = require('fs');
 const path = require('path');
 const tempdir = os.tmpdir();
+// let foundPrompts: Array<PromptMetadata> = [];
 
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
@@ -24,7 +25,7 @@ const PROMPT_SAVE_FOR_ANALYSIS = 'prompter.savePrompt';
 export class PrompterParticipant {
     private static readonly ID = 'prompter';
     private extensionUri: vscode.Uri | undefined;
-    private prompt: string = '';
+    private SavedPrompt?: PromptMetadata = undefined;
 
     activate(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
@@ -89,10 +90,9 @@ export class PrompterParticipant {
             // Register the command handler for the copy to clipboard command
             vscode.commands.registerCommand(
                 PROMPT_SAVE_FOR_ANALYSIS,
-                (args: string) => {
-                    const text = args;
+                (args: PromptMetadata) => {
                     // copy the prompt to an internal variable
-                    this.prompt = text;
+                    this.SavedPrompt = args;
                     // show a message to the user in large window
 
                     // vscode.window.showInformationMessage('Prompt saved for analysis');
@@ -114,7 +114,7 @@ export class PrompterParticipant {
                                 vscode.window.showInformationMessage(
                                     'Prompt not saved, saved prompt will be cleared.'
                                 );
-                                this.prompt = '';
+                                this.SavedPrompt = undefined;
                             }
                         });
                 }
@@ -183,6 +183,7 @@ export class PrompterParticipant {
         stream.markdown('\n\n');
         // check if text is selected
         const editor = vscode.window.activeTextEditor;
+        let tempPrompt: PromptMetadata | undefined;
         if (editor) {
             const selectedText = editor.document.getText(editor.selection);
             if (selectedText) {
@@ -191,7 +192,19 @@ export class PrompterParticipant {
                     'Analyzing selected text... [This may take a while]'
                 );
                 stream.markdown('\n\n');
-                const biasAnalysis = await checkVariableInjection(selectedText);
+                let tempPrompt =
+                    await this._findCorrespondingPromptObject(selectedText);
+                if (!tempPrompt) {
+                    stream.markdown(
+                        'No corresponding prompt found in the current file, make sure the prompt is saved in the current file, and the file is correctly.'
+                    );
+                    return {
+                        metadata: {
+                            command: 'analyze-injection-vulnerability',
+                        },
+                    };
+                }
+                const biasAnalysis = await checkVariableInjection(tempPrompt);
                 // Render the results
                 stream.markdown(
                     '**🎯 Injection Vulnerability Analysis Results**:'
@@ -206,10 +219,12 @@ export class PrompterParticipant {
                 };
             }
         }
-        const prompt = this.prompt;
-        if (prompt !== '') {
+        if (this.SavedPrompt) {
             stream.markdown('Analyzing prompt saved for analysis...');
-            const biasAnalysis = await checkVariableInjection(prompt);
+
+            const biasAnalysis = await checkVariableInjection(
+                this.SavedPrompt!
+            );
             // Render the results
             stream.markdown('**🎯 Injection Vulnerability Analysis Results**:');
             stream.markdown('\n\n');
@@ -300,7 +315,6 @@ export class PrompterParticipant {
         for (const file of files) {
             const doc = await vscode.workspace.openTextDocument(file);
             const text = doc.getText();
-
             if (text.includes('import openai')) {
                 filesWithPrompts.push({ path: file.path, contents: text });
             } else if (text.includes('from openai import')) {
@@ -319,7 +333,11 @@ export class PrompterParticipant {
         }
 
         // For each file, we'll parse it and look for the prompts
-        const prompts = await findPrompts(this.extensionUri, filesWithPrompts);
+        let prompts: PromptMetadata[] = [];
+        // if (foundPrompts.length == 0) {
+        prompts = await findPrompts(this.extensionUri, filesWithPrompts);
+        // foundPrompts = prompts;
+        // }
         if (prompts.length === 0) {
             stream.markdown('  - No prompts found in any files 😢\n');
             return;
@@ -348,7 +366,7 @@ export class PrompterParticipant {
             //create a button to save the prompt to clipboard
             stream.button({
                 command: PROMPT_SAVE_FOR_ANALYSIS,
-                arguments: [prompt.rawText],
+                arguments: [prompt],
                 title: 'Save for Analysis',
             });
 
@@ -392,15 +410,14 @@ export class PrompterParticipant {
                 return { metadata: { command: 'analyze-bias' } };
             }
         }
-        const prompt = this.prompt;
-        if (prompt !== '') {
-            stream.markdown('Analyzing prompt saved for analysis...');
-            const biasAnalysis = await checkGenderBias(prompt);
-            // Render the results
-            stream.markdown('**📊 Bias Analysis Results**:');
-            stream.markdown('\n\n');
-            stream.markdown(this._processGenderBiasAnalysisJSON(biasAnalysis));
-            return { metadata: { command: 'analyze-bias' } };
+        if (this.SavedPrompt) {
+            // stream.markdown('Analyzing prompt saved for analysis...');
+            // const biasAnalysis = await checkGenderBias(prompt);
+            // // Render the results
+            // stream.markdown('**📊 Bias Analysis Results**:');
+            // stream.markdown('\n\n');
+            // stream.markdown(this._processGenderBiasAnalysisJSON(biasAnalysis));
+            // return { metadata: { command: 'analyze-bias' } };
         } else {
             if (editor) {
                 stream.markdown(
@@ -547,5 +564,44 @@ export class PrompterParticipant {
                 stream.markdown('\n\n');
             }
         }
+    }
+    async _findCorrespondingPromptObject(
+        promptText: string
+    ): Promise<PromptMetadata | undefined> {
+        // get name of current file
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            const currentFile = editor.document.fileName;
+            // search for prompts in current file
+            if (this.extensionUri) {
+                const prompts = await findPrompts(this.extensionUri, [
+                    { path: currentFile, contents: editor.document.getText() },
+                ]);
+                // find the prompt that matches the prompt text
+                for (let i = 0; i < prompts.length; i++) {
+                    if (prompts[i].rawText === promptText) {
+                        return prompts[i];
+                    }
+                }
+                // if no prompt is found return the first prompt that contains the prompt text
+                for (let i = 0; i < prompts.length; i++) {
+                    if (prompts[i].rawText.includes(promptText)) {
+                        return prompts[i];
+                    }
+                }
+                // if no prompt is found return the prompt that contains the biggest part of the prompt text
+                let maxMatch = 0;
+                let maxMatchIndex = 0;
+                for (let i = 0; i < prompts.length; i++) {
+                    const match = promptText.match(prompts[i].rawText);
+                    if (match && match.length > maxMatch) {
+                        maxMatch = match.length;
+                        maxMatchIndex = i;
+                    }
+                }
+                return prompts[maxMatchIndex];
+            }
+        }
+        return undefined;
     }
 }

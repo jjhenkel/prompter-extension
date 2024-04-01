@@ -16,10 +16,13 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
         node,
         parser
     );
+    if (Object.keys(temp).length == 0) {
+        return [normalizedResponse, temp];
+    }
+
     const [finalResponse, templateHoles] = await canonizeWithCopilotGPT(
         sourceFile,
-        node,
-        normalizedResponse
+        node
     );
     return [finalResponse, templateHoles];
 }
@@ -27,14 +30,14 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
 export const canonizeWithCopilotGPT = async (
     sourceFile: string,
     node: Parser.SyntaxNode | null,
-    preNormalizedNodeTest: string = ''
+    preNormalizedNodeText: string = ''
     // parser: Parser
 ): Promise<[string, { [key: string]: PromptTemplateHole }]> => {
     const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
 
     // Goal: take the node, convert to a string, shove it in a prompt
     // and to get back a normalized string
-    let nodeAsText = preNormalizedNodeTest;
+    let nodeAsText = preNormalizedNodeText;
     if (nodeAsText === '') {
         nodeAsText = node?.text || '';
     }
@@ -63,9 +66,7 @@ You task is to read this and convert it into a normalized string form.
                 `
 Here is the Python expression:
 \`\`\`python
-"The following is a conversation with an AI Customer Segment Recommender. \\
-      The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. \\
-      AI, please state a insightful observation about " + prompt_product_desc + "."
+"The following is a conversation with an AI Customer Segment Recommender about " + prompt_product_desc + "."
 \`\`\`
 Here is the normalized string:
 \`\`\`txt
@@ -73,9 +74,7 @@ Here is the normalized string:
             ),
             new vscode.LanguageModelChatSystemMessage(
                 `
-The following is a conversation with an AI Customer Segment Recommender.
-The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.
-AI, please state a insightful observation about {{prompt_product_desc}}.
+The following is a conversation with an AI Customer Segment Recommender about {{prompt_product_desc}}.
 \`\`\`
                 `.trim()
             ),
@@ -104,8 +103,18 @@ Here is the normalized string:
     for await (const fragment of normalizedPromptResult.stream) {
         normalizedResponse += fragment;
     }
-
-    console.log(normalizedResponse);
+    if (
+        normalizedResponse == undefined ||
+        normalizedResponse == null ||
+        normalizedResponse == '' ||
+        normalizedResponse.startsWith('Sorry') ||
+        normalizedResponse.startsWith("I'm sorry") ||
+        normalizedResponse.includes("I'm not sure")
+    ) {
+        return JSON.parse(
+            '{"error": "Issue during Azure OpenAI completion: I\'m sorry or I\'m not sure"}'
+        );
+    }
 
     // Also parse out the template holes from the normalized string
 
@@ -179,7 +188,7 @@ export function canonizePromptWithTreeSitter(
                         startLocation: toVSCodePosition(child.startPosition),
                         endLocation: toVSCodePosition(child.endPosition),
                     } as PromptTemplateHole;
-                    return '"+"' + identifier + '"+"';
+                    return '"+' + identifier + '+"';
                 }
             } else {
                 return child.text;
@@ -197,7 +206,7 @@ export function canonizePromptWithTreeSitter(
             }
         }
         // assume the default of joining for other cases (addition, redirection, fstring, etc.).
-        return [childrenValues?.join('') || '', templateHoles];
+        return ['"' + childrenValues?.join('') + '"' || '', templateHoles];
     } catch (e) {
         console.log(e);
         return ['', {}];

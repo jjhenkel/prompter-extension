@@ -3,7 +3,7 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import checkGenderBias from '../modules/bias-modules/gender_bias/gender-bias-module';
 const extensionUri = __dirname.split('\\').slice(0, -2).join('/');
 suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');

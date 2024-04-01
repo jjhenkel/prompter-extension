@@ -23,7 +23,7 @@ suite('Hole Patching Test Suite', async () => {
     test('Simple One Variable Patching Test', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Template Patcher Test file/patcher-test-simple-value.py'
+            'src/test/Template Patcher Test Samples/patcher-test-simple-value.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
@@ -31,20 +31,25 @@ suite('Hole Patching Test Suite', async () => {
         ]);
         await fillHoles(results[0]).then(() => {
             for (let key in results[0].templateValues) {
-                console.log(results[0].templateValues[key].defaultValue);
+                // console.log(results[0].templateValues[key].defaultValue);
                 assert.equal(
                     results[0].templateValues[key].defaultValue.length > 0,
                     true
                 );
             }
         });
-        console.log(JSON.stringify(results[0].templateValues));
+        for (let key in results[0].templateValues) {
+            console.log(key);
+            console.log(
+                JSON.stringify(results[0].templateValues[key].defaultValue)
+            );
+        }
     });
 
     test('Simple Two Variable Patching Test', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Template Patcher Test file/patcher-test-simple-two-values.py'
+            'src/test/Template Patcher Test Samples/patcher-test-simple-two-values.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
@@ -52,20 +57,25 @@ suite('Hole Patching Test Suite', async () => {
         ]);
         await fillHoles(results[0]).then(() => {
             for (let key in results[0].templateValues) {
-                console.log(results[0].templateValues[key].defaultValue);
+                // console.log(results[0].templateValues[key].defaultValue);
                 assert.equal(
                     results[0].templateValues[key].defaultValue.length > 0,
                     true
                 );
             }
         });
-        console.log(JSON.stringify(results[0].templateValues));
+        for (let key in results[0].templateValues) {
+            console.log(key);
+            console.log(
+                JSON.stringify(results[0].templateValues[key].defaultValue)
+            );
+        }
     });
 
-    test('One Variable Patching Test wit Readme', async () => {
+    test('One Variable Patching Test with Readme', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Template Patcher Test file/template patch with readme/patcher-test-simple-value-with-readme.py'
+            'src/test/Template Patcher Test Samples/template patch with readme/patcher-test-simple-value-with-readme.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
@@ -73,7 +83,7 @@ suite('Hole Patching Test Suite', async () => {
         ]);
         await fillHoles(results[0]).then(() => {
             for (let key in results[0].templateValues) {
-                console.log(results[0].templateValues[key].defaultValue);
+                // console.log(results[0].templateValues[key].defaultValue);
                 assert.equal(
                     results[0].templateValues[key].defaultValue.length > 0,
                     true
@@ -85,6 +95,11 @@ suite('Hole Patching Test Suite', async () => {
                 );
             }
         });
-        console.log(JSON.stringify(results[0].templateValues));
+        for (let key in results[0].templateValues) {
+            console.log(key);
+            console.log(
+                JSON.stringify(results[0].templateValues[key].defaultValue)
+            );
+        }
     });
 });

@@ -51,24 +51,23 @@ suite('Canonization Test Suite', () => {
     test('Simple AST Redirect Test', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Canonization Python Test Files/ast-test-simple-redirect.py'
+            'src/test/Canonization Test Samples/ast-test-simple-redirect.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
             { contents: contents, path: path },
-        ]).then((results) => {
-            let canonized = results[0].normalizedText;
-            // compare equality while ignoring whitespace and newlines and backslashes
-            assert.equal(
-                canonized.replace(/\s/g, '').replace(/\\/g, ''),
-                templateOutput.replace(/\s/g, '').replace(/\\/g, '')
-            );
-        });
+        ]);
+        let canonized = results[0].normalizedText;
+        // compare equality while ignoring whitespace and newlines and backslashes
+        assert.equal(
+            canonized.replace(/\s/g, '').replace(/\\/g, ''),
+            templateOutput.replace(/\s/g, '').replace(/\\/g, '')
+        );
     });
     test('Simple AST Addition Test', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Canonization Python Test Files/ast-test-simple-addition.py'
+            'src/test/Canonization Test Samples/ast-test-simple-addition.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
@@ -84,7 +83,7 @@ suite('Canonization Test Suite', () => {
     test('Simple AST F-string Test', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Canonization Python Test Files/ast-test-simple-f-string.py'
+            'src/test/Canonization Test Samples/ast-test-simple-f-string.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
@@ -101,7 +100,7 @@ suite('Canonization Test Suite', () => {
     test('Simple AST Modulo-string Test', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Canonization Python Test Files/ast-test-simple-modulo.py'
+            'src/test/Canonization Test Samples/ast-test-simple-modulo.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
@@ -118,7 +117,7 @@ suite('Canonization Test Suite', () => {
     test('Simple Canonization Test', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Canonization Python Test Files/ast-test-simple-addition-canonization.py'
+            'src/test/Canonization Test Samples/ast-test-simple-addition-canonization.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [

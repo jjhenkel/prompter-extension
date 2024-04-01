@@ -82,13 +82,14 @@ async function _patchValue(
                 temperature: 0.3,
                 seed: 42,
             });
-            console.log(response);
+            // console.log(response);
             const result = response.choices?.[0]?.message?.content;
             // convert result to json and return
             if (result !== undefined && result !== null) {
                 // if the result is I'm sorry or  I'm not sure what you're asking for, return an error
                 if (
-                    result.includes("I'm sorry") ||
+                    result.startsWith('Sorry') ||
+                    result.startsWith("I'm sorry") ||
                     result.includes("I'm not sure")
                 ) {
                     return JSON.parse(
