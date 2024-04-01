@@ -7,12 +7,14 @@ import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import * as myExtension from '../extension';
 import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
 import { readFileSync } from 'fs';
-import { canonizePrompt } from '../modules/prompt-finder/canonization';
+import { fillHoles } from '../modules/prompt-finder/hole-patching';
+const packageJson = require('../../package.json');
+
 const extensionUri = vscode.Uri.parse(
     __dirname.split('\\').slice(0, -2).join('/')
 );
 
-suite('Hole Patching Test Suite', () => {
+suite('Hole Patching Test Suite', async () => {
     vscode.window.showInformationMessage('Start all tests.');
     // install github copilot extension to vs code
     vscode.extensions.getExtension('github.copilot')?.activate();
@@ -29,8 +31,62 @@ suite('Hole Patching Test Suite', () => {
         let results = await findPrompts(extensionUri, [
             { contents: contents, path: path },
         ]);
-        let templateHole = results[0].templateValues;
-        // compare equality while ignoring whitespace and newlines and backslashes
-        console.log(JSON.stringify(templateHole));
+        await fillHoles(results[0]).then(() => {
+            for (let key in results[0].templateValues) {
+                console.log(results[0].templateValues[key].defaultValue);
+                assert.equal(
+                    results[0].templateValues[key].defaultValue.length > 0,
+                    true
+                );
+            }
+        });
+        console.log(JSON.stringify(results[0].templateValues));
+    });
+
+    test('Simple Two Variable Patching Test', async () => {
+        const path = vscode.Uri.joinPath(
+            extensionUri,
+            'src/test/Template Patcher Test file/patcher-test-simple-two-values.py'
+        ).fsPath;
+        const contents = readFileSync(path, 'utf8');
+        let results = await findPrompts(extensionUri, [
+            { contents: contents, path: path },
+        ]);
+        await fillHoles(results[0]).then(() => {
+            for (let key in results[0].templateValues) {
+                console.log(results[0].templateValues[key].defaultValue);
+                assert.equal(
+                    results[0].templateValues[key].defaultValue.length > 0,
+                    true
+                );
+            }
+        });
+        console.log(JSON.stringify(results[0].templateValues));
+    });
+
+    test('One Variable Patching Test wit Readme', async () => {
+        const path = vscode.Uri.joinPath(
+            extensionUri,
+            'src/test/Template Patcher Test file/template patch with readme/patcher-test-simple-value-with-readme.py'
+        ).fsPath;
+        const contents = readFileSync(path, 'utf8');
+        let results = await findPrompts(extensionUri, [
+            { contents: contents, path: path },
+        ]);
+        await fillHoles(results[0]).then(() => {
+            for (let key in results[0].templateValues) {
+                console.log(results[0].templateValues[key].defaultValue);
+                assert.equal(
+                    results[0].templateValues[key].defaultValue.length > 0,
+                    true
+                );
+                assert.ok(
+                    results[0].templateValues[key].defaultValue.includes(
+                        'flower'
+                    )
+                );
+            }
+        });
+        console.log(JSON.stringify(results[0].templateValues));
     });
 });

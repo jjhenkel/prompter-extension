@@ -7,7 +7,7 @@ import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import * as myExtension from '../extension';
 import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
 import { readFileSync } from 'fs';
-import { canonizePrompt } from '../modules/prompt-finder/canonization';
+import { canonizePromptWithTreeSitter } from '../modules/prompt-finder/canonization';
 const extensionUri = vscode.Uri.parse(
     __dirname.split('\\').slice(0, -2).join('/')
 );
@@ -19,6 +19,28 @@ const templateCanonizationOutput =
     'The following is a conversation with an AI Customer Segment Recommender. \
 The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.  \
 AI, please state a insightful observation about {prompt_product_desc} .';
+
+const installExtensionsNeeded = async () => {
+    // test if all the extensions in packageJson are installed
+    if (!vscode.extensions.getExtension('github.copilot')) {
+        await vscode.commands.executeCommand(
+            'workbench.extensions.installExtension',
+            'github.copilot-chat'
+        );
+    }
+
+    if (!vscode.extensions.getExtension('github.copilot-chat')) {
+        await vscode.commands.executeCommand(
+            'workbench.extensions.installExtension',
+            'github.copilot-chat'
+        );
+    }
+    // wait for one minute
+    // await new Promise((resolve) => setTimeout(resolve, 60000));
+};
+setup(async () => {
+    await installExtensionsNeeded();
+});
 
 suite('Canonization Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');

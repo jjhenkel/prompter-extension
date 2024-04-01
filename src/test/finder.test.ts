@@ -1,15 +1,24 @@
 import { readFileSync } from 'fs';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-
+import {
+    downloadAndUnzipVSCode,
+    resolveCliArgsFromVSCodeExecutablePath,
+    runTests,
+} from '@vscode/test-electron';
+const packageJson = require('../../package.json');
+const tokenJson = require('../../token.json');
 import { findPrompts } from '../modules/prompt-finder';
 // exit the out folder
 const extensionUri = __dirname.split('\\').slice(0, -2).join('/');
 console.log(extensionUri);
+import * as cp from 'child_process';
 
 suite('Finder Test Suite', () => {
-    vscode.window.showInformationMessage('Start all tests.');
-
+    vscode.window.showInformationMessage('Waiting for extension to activate.');
+    // setup(() => {
+    // installExtensionsNeeded();
+    // });
     test('Find nothing', async () => {
         const result = await findPrompts(vscode.Uri.parse(extensionUri), [
             { contents: "print('Hello, World!')", path: 'test.py' },

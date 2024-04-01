@@ -4,8 +4,127 @@ import { PromptTemplateHole, toVSCodePosition } from '.';
 import Parser from 'web-tree-sitter';
 import * as fs from 'fs';
 import { vsprintf } from 'sprintf-js';
+import * as vscode from 'vscode';
 
-export function canonizePrompt(
+export const canonizeWithCopilotGPT = async (
+    sourceFile: string,
+    node: Parser.SyntaxNode | null
+    // parser: Parser
+): Promise<[string, { [key: string]: PromptTemplateHole }]> => {
+    const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
+
+    // Goal: take the node, convert to a string, shove it in a prompt
+    // and to get back a normalized string
+    const nodeAsText = node?.text;
+
+    const normalizedPromptResult = await vscode.lm.sendChatRequest(
+        LANGUAGE_MODEL_ID,
+        [
+            new vscode.LanguageModelChatSystemMessage(
+                `
+# Task
+
+You will be given a Python expression. This is expression yields a string and may do so
+via a variety of methods such as string concatenation, string formatting, or string slicing.
+You task is to read this and convert it into a normalized string form.
+
+## Instructions
+
+1. Read the Python expression.
+2. Note where there are "template holes" things like f'Blah blah {variable}' that need to be filled in.
+3. Produce as output a single string where any template holes have been normalized to a placeholder like {variable}.
+4. Any variable that can't be resolved should be converted to a placeholder like {variable}.
+5. Output only the normalized string, nothing else.
+                `.trim()
+            ),
+            new vscode.LanguageModelChatSystemMessage(
+                `
+Here is the Python expression:
+\`\`\`python
+"The following is a conversation with an AI Customer Segment Recommender. \\
+      The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. \\
+      AI, please state a insightful observation about " + prompt_product_desc + "."
+\`\`\`
+Here is the normalized string:
+\`\`\`txt
+                `.trim()
+            ),
+            new vscode.LanguageModelChatSystemMessage(
+                `
+The following is a conversation with an AI Customer Segment Recommender.
+The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.
+AI, please state a insightful observation about {{prompt_product_desc}}.
+\`\`\`
+                `.trim()
+            ),
+            new vscode.LanguageModelChatUserMessage(
+                `
+Here is the Python expression:
+\`\`\`python
+${nodeAsText}
+\`\`\`
+Here is the normalized string:
+\`\`\`txt
+                `.trim()
+            ),
+        ],
+        {
+            modelOptions: {
+                temperature: 0.0,
+                stop: ['```'],
+            },
+        },
+        new vscode.CancellationTokenSource().token
+    );
+
+    // Build the normalized response from the stream
+    let normalizedResponse = '';
+    for await (const fragment of normalizedPromptResult.stream) {
+        normalizedResponse += fragment;
+    }
+
+    console.log(normalizedResponse);
+
+    // Also parse out the template holes from the normalized string
+
+    // parse the normalized response to get the template holes surrounded by {{}}
+    const templateHoles: { [key: string]: PromptTemplateHole } = {};
+    const regex = /{{(.*?)}}/g;
+    let match;
+    const children = node?.descendantsOfType(['string_content', 'identifier']);
+
+    while ((match = regex.exec(normalizedResponse))) {
+        const holeName: string = match[1];
+        // get the start and end location of the hole in the normalized response in the parsed node
+        let _startLocation = toVSCodePosition(
+            node?.startPosition || { row: 0, column: 0 }
+        );
+        let _endLocation = toVSCodePosition(
+            node?.endPosition || { row: 0, column: 0 }
+        );
+        for (let child of children || []) {
+            if (
+                child.text === holeName ||
+                child.text === holeName.slice(0, holeName.indexOf('('))
+            ) {
+                _startLocation = toVSCodePosition(child.startPosition);
+                _endLocation = toVSCodePosition(child.endPosition);
+            }
+        }
+        templateHoles[holeName] = {
+            name: holeName,
+            inferredType: 'string',
+            rawText: match[0],
+            // get the start and end location of the hole in the normalized response in the parsed node
+            startLocation: _startLocation,
+            endLocation: _endLocation,
+        };
+    }
+
+    return [normalizedResponse, templateHoles];
+};
+
+export function canonizePromptWithTreeSitter(
     sourceFile: string,
     node: Parser.SyntaxNode | null,
     // extensionUri: vscode.Uri
@@ -38,7 +157,7 @@ export function canonizePrompt(
                         startLocation: toVSCodePosition(child.startPosition),
                         endLocation: toVSCodePosition(child.endPosition),
                     } as PromptTemplateHole;
-                    return '{' + identifier + '}';
+                    return '"+"' + identifier + '"+"';
                 }
             } else {
                 return child.text;

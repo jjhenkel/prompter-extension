@@ -7,7 +7,7 @@ import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import * as myExtension from '../extension';
 import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
 import { readFileSync } from 'fs';
-import { canonizePrompt } from '../modules/prompt-finder/canonization';
+import { canonizePromptWithTreeSitter } from '../modules/prompt-finder/canonization';
 const extensionUri = __dirname.split('\\').slice(0, -2).join('/');
 suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');
