@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import Parser from 'web-tree-sitter';
 import hash from 'object-hash';
-import { canonizeWithCopilotGPT } from './canonization';
+import {
+    canonizeWithCopilotGPT,
+    canonizeWithTreeSitterANDCopilotGPT,
+} from './canonization';
 import { parse } from 'path';
 // import { patchValue } from './holePatching';
 
@@ -53,7 +56,7 @@ export type PromptMetadata = {
 // a tree sitter tree and users a cursor to walk the tree
 // and find prompts.
 
-// let parserG: Parser | null = null;
+let parserG: Parser | null = null;
 
 export const findPrompts = async (
     extensionUri: vscode.Uri,
@@ -74,7 +77,7 @@ export const findPrompts = async (
     // Create a parser
     const parser = new Parser();
     parser.setLanguage(pythonGrammar);
-    // parserG = parser;
+    parserG = parser;
 
     // Try and parse, then walk the tree and return results
     const promptMatches = await Promise.all(
@@ -577,7 +580,13 @@ const _createPromptMetadata = async (
     // The template holes and normalized text will be dealt with later
     try {
         [promptMeta.normalizedText, promptMeta.templateValues] =
-            await canonizeWithCopilotGPT(promptMeta.sourceFilePath, promptNode);
+            // await canonizeWithCopilotGPT(promptMeta.sourceFilePath, promptNode);
+            // await canonizeWithCopilotGPT(promptMeta.sourceFilePath, promptNode);
+            await canonizeWithTreeSitterANDCopilotGPT(
+                promptMeta.sourceFilePath,
+                promptNode,
+                parserG!
+            );
     } catch (e) {
         console.error(e);
     }

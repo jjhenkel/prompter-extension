@@ -6,16 +6,38 @@ import * as fs from 'fs';
 import { vsprintf } from 'sprintf-js';
 import * as vscode from 'vscode';
 
+export async function canonizeWithTreeSitterANDCopilotGPT(
+    sourceFile: string,
+    node: Parser.SyntaxNode | null,
+    parser: Parser
+): Promise<[string, { [key: string]: PromptTemplateHole }]> {
+    const [normalizedResponse, temp] = canonizePromptWithTreeSitter(
+        sourceFile,
+        node,
+        parser
+    );
+    const [finalResponse, templateHoles] = await canonizeWithCopilotGPT(
+        sourceFile,
+        node,
+        normalizedResponse
+    );
+    return [finalResponse, templateHoles];
+}
+
 export const canonizeWithCopilotGPT = async (
     sourceFile: string,
-    node: Parser.SyntaxNode | null
+    node: Parser.SyntaxNode | null,
+    preNormalizedNodeTest: string = ''
     // parser: Parser
 ): Promise<[string, { [key: string]: PromptTemplateHole }]> => {
     const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
 
     // Goal: take the node, convert to a string, shove it in a prompt
     // and to get back a normalized string
-    const nodeAsText = node?.text;
+    let nodeAsText = preNormalizedNodeTest;
+    if (nodeAsText === '') {
+        nodeAsText = node?.text || '';
+    }
 
     const normalizedPromptResult = await vscode.lm.sendChatRequest(
         LANGUAGE_MODEL_ID,
@@ -195,17 +217,13 @@ class ASTHelper {
         if (right?.type === 'identifier') {
             return this._getIdentifierValue(right.text, tree);
         }
-        // if the right side is a function call, find the value of the function call
-        if (right?.type === 'function_call') {
-            return this._getFunctionCallValue(right, tree);
-        }
+        // // if the right side is a function call, find the value of the function call
+        // if (right?.type === 'function_call') {
+        //     return this._getFunctionCallValue(right, tree);
+        // }
         // if the right side is a binary expression, find the value of the binary expression
         if (right?.type === 'binary_expression') {
             return this._getBinaryExpressionValue(right, tree);
-        }
-        // if the right side is a unary expression, find the value of the unary expression
-        if (right?.type === 'unary_expression') {
-            return this._getUnaryExpressionValue(right, tree);
         }
         // if the right side is an f-string, find the value of the f-string
         if (right?.type === 'f_string') {
@@ -238,7 +256,7 @@ class ASTHelper {
                 return value;
             }
         }
-        //TODO add more cases
+        //IF not supported return undefined
         return undefined;
     }
 
@@ -280,12 +298,6 @@ class ASTHelper {
         return values.join('');
         // throw new Error('Method not implemented.');
     }
-    private _getUnaryExpressionValue(
-        right: Parser.SyntaxNode,
-        tree: Parser.Tree
-    ): string | undefined {
-        throw new Error('Method not implemented.');
-    }
 
     private _getBinaryExpressionValue(
         right: Parser.SyntaxNode,
@@ -322,13 +334,5 @@ class ASTHelper {
             }
             return leftValueString;
         }
-    }
-
-    private _getFunctionCallValue(
-        right: Parser.SyntaxNode,
-        tree: Parser.Tree
-    ): string | undefined {
-        //TODO rely on ChatGPT to get the possible values of the function call
-        throw new Error('Method not implemented.');
     }
 }

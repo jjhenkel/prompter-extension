@@ -18,7 +18,7 @@ AI, please state a insightful observation about new product .';
 const templateCanonizationOutput =
     'The following is a conversation with an AI Customer Segment Recommender. \
 The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.  \
-AI, please state a insightful observation about {prompt_product_desc} .';
+AI, please state a insightful observation about {{prompt_product_desc}} .';
 
 const installExtensionsNeeded = async () => {
     // test if all the extensions in packageJson are installed
@@ -59,13 +59,14 @@ suite('Canonization Test Suite', () => {
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
             { contents: contents, path: path },
-        ]);
-        let canonized = results[0].normalizedText;
-        // compare equality while ignoring whitespace and newlines and backslashes
-        assert.equal(
-            canonized.replace(/\s/g, '').replace(/\\/g, ''),
-            templateOutput.replace(/\s/g, '').replace(/\\/g, '')
-        );
+        ]).then((results) => {
+            let canonized = results[0].normalizedText;
+            // compare equality while ignoring whitespace and newlines and backslashes
+            assert.equal(
+                canonized.replace(/\s/g, '').replace(/\\/g, ''),
+                templateOutput.replace(/\s/g, '').replace(/\\/g, '')
+            );
+        });
     });
     test('Simple AST Addition Test', async () => {
         const path = vscode.Uri.joinPath(
