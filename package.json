@@ -22,29 +22,29 @@
   ],
   "contributes": {
     "chatParticipants": [
-        {
-            "id": "prompter",
-            "name": "Prompter",
-            "description": "Let's analyze and improve some prompts",
-            "commands": [
-                {
-                    "name": "find-prompts",
-                    "description": "Find prompts in your workspace"
-                },
-                {
-                    "name": "analyze-bias",
-                    "description": "Analyze bias for a selected prompt"
-                },
-                {
-                  "name": "analyze-injection-vulnerability",
-                  "description": "Analyze injection vulnerability of a selected prompt"
-                },
-                {
-                  "name": "help",
-                  "description": "Get help with using prompter"
-              }
-            ]
-        }
+      {
+        "id": "prompter",
+        "name": "Prompter",
+        "description": "Let's analyze and improve some prompts",
+        "commands": [
+          {
+            "name": "find-prompts",
+            "description": "Find prompts in your workspace"
+          },
+          {
+            "name": "analyze-bias",
+            "description": "Analyze bias for a selected prompt"
+          },
+          {
+            "name": "analyze-injection-vulnerability",
+            "description": "Analyze injection vulnerability of a selected prompt"
+          },
+          {
+            "name": "help",
+            "description": "Get help with using prompter"
+          }
+        ]
+      }
     ],
     "commands": [
       {
@@ -60,7 +60,10 @@
     "watch": "tsc -watch -p ./",
     "pretest": "yarn run compile && yarn run lint",
     "lint": "eslint src --ext ts",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "postinstall": "husky"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
@@ -70,17 +73,31 @@
     "@vscode/test-cli": "^0.0.5",
     "@vscode/test-electron": "^2.3.9",
     "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-unused-imports": "^3.1.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "prettier": "3.2.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
   "dependencies": {
     "@types/object-hash": "^3.0.6",
+    "@types/sprintf-js": "^1.1.4",
     "axios": "^1.6.7",
     "copyfiles": "^2.4.1",
     "natural": "^6.12.0",
     "object-hash": "^3.0.0",
     "openai": "^4.28.0",
+    "sprintf-js": "^1.1.3",
     "string-comparison": "^1.3.0",
     "web-tree-sitter": "^0.21.0"
+  },
+  "prettier": {
+    "trailingComma": "es5",
+    "tabWidth": 4,
+    "semi": true,
+    "singleQuote": true
   }
 }
