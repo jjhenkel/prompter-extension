@@ -4,8 +4,12 @@ import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import * as vscode from 'vscode';
 
 import PromptJson from './gender_prompt_4.json';
+import { PromptMetadata } from '../prompt-finder/index.js';
+import { fillHoles } from '../prompt-finder/hole-patching.js';
 
-async function checkGenderBias(input_text: string): Promise<JSONSchemaObject> {
+async function checkGenderBias(
+    inputPrompt: PromptMetadata
+): Promise<JSONSchemaObject> {
     // load prompt from json file
     // extract prompt from json file
     var userPromptText: string = PromptJson.user_prompt;
@@ -13,10 +17,31 @@ async function checkGenderBias(input_text: string): Promise<JSONSchemaObject> {
     // inject text variables into prompt
     const variables_to_inject = PromptJson.injected_variables;
     userPromptText = userPromptText.replaceAll('__', '\n');
+    let patchedPrompt = inputPrompt.normalizedText;
+    // if the prompt has undefined template values, perform hole patching
+    let hasEmptyValues = false;
+    for (let key in inputPrompt.templateValues) {
+        if (!inputPrompt.templateValues[key].defaultValue) {
+            hasEmptyValues = true;
+            break;
+        }
+    }
+    if (hasEmptyValues) {
+        await fillHoles(inputPrompt);
+    }
+    for (const key in inputPrompt.templateValues) {
+        let value = inputPrompt.templateValues[key].defaultValue;
+        patchedPrompt = patchedPrompt.replaceAll('{{' + key + '}}', value);
+    }
+
+    for (const key in inputPrompt.templateValues) {
+        let value = inputPrompt.templateValues[key].defaultValue;
+        patchedPrompt = patchedPrompt.replaceAll('{{' + key + '}}', value);
+    }
     let userPrompt = userPromptText;
     for (const variable in variables_to_inject) {
         let value = '{' + variables_to_inject[variable] + '}';
-        userPrompt = userPrompt.replaceAll(value, input_text);
+        userPrompt = userPrompt.replaceAll(value, patchedPrompt);
     }
     // send the prompt to azure openai using client
     const deploymentId = 'gpt-35-turbo';
