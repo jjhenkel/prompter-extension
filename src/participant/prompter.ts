@@ -4,6 +4,7 @@ import checkGenderBias from '../modules/bias-modules/gender_bias/gender-bias-mod
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
 import * as os from 'os';
+import { fillHoles } from '../modules/prompt-finder/hole-patching';
 const fs = require('fs');
 const path = require('path');
 const tmpDir = os.tmpdir();
@@ -192,13 +193,18 @@ export class PrompterParticipant {
                     'Analyzing selected text... [This may take a while]'
                 );
                 stream.markdown('\n\n');
-                const startLocation = vscode.window.activeTextEditor?.selection.start;
-                const endLocation = vscode.window.activeTextEditor?.selection.end;
-                let tempPrompt =
-                    await this._findCorrespondingPromptObject(selectedText);
+                const startLocation =
+                    vscode.window.activeTextEditor?.selection.start;
+                const endLocation =
+                    vscode.window.activeTextEditor?.selection.end;
+                let tempPrompt = await this._findCorrespondingPromptObject(
+                    selectedText,
+                    startLocation,
+                    endLocation
+                );
                 if (!tempPrompt) {
                     stream.markdown(
-                        'No corresponding prompt found in the current file, make sure the prompt is saved in the current file, and the file is correctly.'
+                        'No corresponding prompt found in the current file, make sure you select the complete prompt, and that the prompt is saved in the current file, and the file is correctly written.'
                     );
                     return {
                         metadata: {
@@ -505,7 +511,7 @@ export class PrompterParticipant {
             }
 
             stream.markdown(
-                `**📈 Percentage of ${possibly} Vulnerable Variables:** ${(poisonedVariables.size / (json["total_variables_in_prompt"] as number) * 100).toFixed(2)} `
+                `**📈 Percentage of ${possibly} Vulnerable Variables:** ${((poisonedVariables.size / (json['total_variables_in_prompt'] as number)) * 100).toFixed(2)} `
             );
             stream.markdown('\n\n');
             // print the names of the variables that are vulnerable
@@ -518,7 +524,7 @@ export class PrompterParticipant {
 
             // calculate the percentage of successful attacks and show in :.2f format
             stream.markdown(
-                `**📈 Percentage of ${possibly} Successful Attacks:** ${(poisonedExamplesArray.length / (json["total_attempts"] as number) * 100).toFixed(2)} `
+                `**📈 Percentage of ${possibly} Successful Attacks:** ${((poisonedExamplesArray.length / (json['total_attempts'] as number)) * 100).toFixed(2)} `
             );
 
             stream.markdown('\n\n');
@@ -591,7 +597,9 @@ export class PrompterParticipant {
         }
     }
     async _findCorrespondingPromptObject(
-        promptText: string
+        promptText: string,
+        startLocation?: vscode.Position,
+        endLocation?: vscode.Position
     ): Promise<PromptMetadata | undefined> {
         // get name of current file
         const editor = vscode.window.activeTextEditor;
@@ -602,12 +610,34 @@ export class PrompterParticipant {
                 const prompts = await findPrompts(this.extensionUri, [
                     { path: currentFile, contents: editor.document.getText() },
                 ]);
+                // find the prompt that encompassing start and end locations
+                if (startLocation && endLocation) {
+                    for (let i = 0; i < prompts.length; i++) {
+                        if (
+                            (prompts[i].startLocation.line <
+                                startLocation.line ||
+                                (prompts[i].startLocation.line ===
+                                    startLocation.line &&
+                                    prompts[i].startLocation.character <=
+                                        startLocation.character)) &&
+                            (prompts[i].endLocation.line > endLocation.line ||
+                                (prompts[i].endLocation.line ===
+                                    endLocation.line &&
+                                    prompts[i].endLocation.character >=
+                                        endLocation.character))
+                        ) {
+                            return prompts[i];
+                        }
+                    }
+                }
+
                 // find the prompt that matches the prompt text
                 for (let i = 0; i < prompts.length; i++) {
                     if (prompts[i].rawText === promptText) {
                         return prompts[i];
                     }
                 }
+
                 // if no prompt is found return the first prompt that contains the prompt text
                 for (let i = 0; i < prompts.length; i++) {
                     if (prompts[i].rawText.includes(promptText)) {
