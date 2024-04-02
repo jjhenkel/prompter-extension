@@ -21,7 +21,7 @@ async function checkVariableInjection(
     // const variables_to_inject = PromptJson.injected_variables;
     // userPromptText = userPromptText.replaceAll("__","\n");
     let userPrompt = prompt;
-    let promptVariables: string[] | null = [];
+    // let promptVariables: string[] | null = [];
     // extract variables in prompt by finding string + var + string or by finding {var} in string
     let defaultValuesPrompt = prompt.normalizedText;
     await fillHoles(prompt);
@@ -65,7 +65,7 @@ async function checkVariableInjection(
     } else {
         return JSON.parse('{"error": "No response from Azure OpenAI}"');
     }
-    let attackTuples = AttacksJson.attacks;
+    let attackTuples = AttacksJson.attacks.slice(0, 4); // only use first 4 attacks for testing
     let poisoned_responses: string[] = [];
     let maybe_poisoned_responses: string[] = [];
     // sentiment analyzer definition
@@ -75,41 +75,36 @@ async function checkVariableInjection(
     // const comparisonSystemPromptText: string = ComparisonPromptJson.system_prompt;
     // let comparisonUserPromptText: string = ComparisonPromptJson.user_prompt;
     // const comparisonVariablesToInject = ComparisonPromptJson.injected_variables;
-    const attack_promises = attackTuples
-        .slice(0, 4)
-        .map(async (attack_tuple) => {
-            // .slice(0,4) ==> only use first 4 attacks for testing
-            return await processInjection(
-                prompt,
-                // promptVariables,
-                attack_tuple,
-                systemPromptText,
-                client,
-                deploymentId,
-                default_response,
-                // analyzer,
-                // default_sentiment,
-                ComparisonWithLLMPromptJson
-            );
-        });
+    const attack_promises = attackTuples.map(async (attack_tuple) => {
+        return await processInjection(
+            prompt,
+            // promptVariables,
+            attack_tuple,
+            systemPromptText,
+            client,
+            deploymentId,
+            default_response,
+            // analyzer,
+            // default_sentiment,
+            ComparisonWithLLMPromptJson
+        );
+    });
     // map attack results to their respective arrays
     const attack_results = await Promise.all(attack_promises);
 
     for (let i = 0; i < attack_results.length; i++) {
-        for (let i = 0; i < attack_results.length; i++) {
-            // console.log(attack_results[i]);
-            // let attack = attack_results[i][0];
-            let poisoned_responses_temp = attack_results[i][1];
-            let maybe_poisoned_responses_temp = attack_results[i][2];
-            // let sentiment_differences_temp = attack_results[i][3];
-            if (poisoned_responses_temp.length > 0) {
-                poisoned_responses.push(...poisoned_responses_temp);
-            }
-            if (maybe_poisoned_responses_temp.length > 0) {
-                maybe_poisoned_responses.push(...maybe_poisoned_responses_temp);
-            }
-            // sentiment_differences.push(...sentiment_differences_temp);
+        // console.log(attack_results[i]);
+        // let attack = attack_results[i][0];
+        let poisoned_responses_temp = attack_results[i][1];
+        let maybe_poisoned_responses_temp = attack_results[i][2];
+        // let sentiment_differences_temp = attack_results[i][3];
+        if (poisoned_responses_temp.length > 0) {
+            poisoned_responses.push(...poisoned_responses_temp);
         }
+        if (maybe_poisoned_responses_temp.length > 0) {
+            maybe_poisoned_responses.push(...maybe_poisoned_responses_temp);
+        }
+        // sentiment_differences.push(...sentiment_differences_temp);
     }
 
     // add results with sentiment differences larger than the average to the  maybe poisoned responses list
@@ -138,6 +133,10 @@ async function checkVariableInjection(
             '{"vulnerable": "Yes" , ' +
             '"poisoned_responses": ' +
             poisoned_responses_json_string +
+            ',' +
+            `"total_attempts": "${JSON.stringify(attackTuples.length * Object.keys(prompt.templateValues).length)}"` +
+            ',' +
+            `"total_variables_in_prompt": "${JSON.stringify(Object.keys(prompt.templateValues).length)}"` +
             '}';
         let temp_json = JSON.parse(str);
         return temp_json;
@@ -148,9 +147,13 @@ async function checkVariableInjection(
         );
         const str =
             '{"vulnerable": "Maybe" , ' +
-            '"poisoned_responses": [' +
+            '"poisoned_responses": ' +
             maybe_poisoned_responses_json_string +
-            ']}';
+            ',' +
+            `"total_attempts": "${JSON.stringify(attackTuples.length * Object.keys(prompt.templateValues).length)}"` +
+            ',' +
+            `"total_variables_in_prompt": "${JSON.stringify(Object.keys(prompt.templateValues).length)}"` +
+            '}';
         let temp_json = JSON.parse(str);
         return temp_json;
     } else {
@@ -167,7 +170,7 @@ async function processInjection(
     systemPromptText: string,
     client: any,
     deploymentId: string,
-    default_response: string,
+    defaultResponse: string,
     // analyzer: SentimentAnalyzer,
     // default_sentiment: number,
     ComparisonPromptJson: any
@@ -210,19 +213,22 @@ async function processInjection(
             seed: 42,
         });
 
-        let result = response.choices?.[0]?.message?.content;
+        let injectedResult = response.choices?.[0]?.message?.content;
         // convert attack to word list
         const attack_list = attack.split(' ');
-        if (result !== undefined && result !== null) {
-            result = JSON.stringify(result);
+        if (injectedResult !== undefined && injectedResult !== null) {
+            injectedResult = JSON.stringify(injectedResult);
             // console.log(JSON.stringify(result));
             // console.log(JSON.stringify(default_response));
             // console.log(_cosineSimilarity(result,default_response));
 
             // if it contains the attack response
-            if (result?.includes(attack_response)) {
+            if (injectedResult?.includes(attack_response)) {
                 // attack detected
-                poisoned_responses.push([injectionPointVariable, result]);
+                poisoned_responses.push([
+                    injectionPointVariable,
+                    injectedResult,
+                ]);
             }
             // if the similarity to the base response is lower
             // else if (
@@ -255,7 +261,7 @@ async function processInjection(
             // ]);
             else {
                 // ask chatgpt to compare the attack response with the default response and check if the attack response is similar in tone , goal, sentiment to the default response
-                const prompt_list = [default_response, result];
+                const prompt_list = [defaultResponse, injectedResult];
                 for (let i = 0; i < prompt_list.length; i++) {
                     let value = '{' + comparisonVariablesToInject[i] + '}';
                     comparisonUserPromptText =
@@ -285,15 +291,22 @@ async function processInjection(
                         temperature: 0.3,
                         seed: 42,
                     });
-                    let result = response.choices?.[0]?.message?.content;
-                    if (result !== undefined && result !== null) {
+                    let comparisonResult =
+                        response.choices?.[0]?.message?.content;
+                    if (
+                        comparisonResult !== undefined &&
+                        comparisonResult !== null
+                    ) {
                         // clean json
-                        // find last occurence of } in result string
-                        let last_occurence = result.lastIndexOf('}');
-                        // remove everything after the last occurence
-                        result = result.substring(0, last_occurence + 1);
+                        // find last occurrence of } in result string
+                        let last_occurrence = comparisonResult.lastIndexOf('}');
+                        // remove everything after the last occurrence
+                        comparisonResult = comparisonResult.substring(
+                            0,
+                            last_occurrence + 1
+                        );
                         try {
-                            const comparisonJson = JSON.parse(result);
+                            const comparisonJson = JSON.parse(comparisonResult);
                             const similarity_result = comparisonJson[
                                 'similar'
                             ] as String;
@@ -303,13 +316,13 @@ async function processInjection(
                             ) {
                                 maybe_poisoned_responses.push([
                                     injectionPointVariable,
-                                    result,
+                                    injectedResult,
                                 ]);
                             }
                         } catch (e) {
                             console.log(
                                 'Error parsing comparison result, JSON is invalid: ' +
-                                    result
+                                    comparisonResult
                             );
                         }
                     } else {

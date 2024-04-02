@@ -6,7 +6,7 @@ import checkVariableInjection from '../modules/injection-module/var-injection-mo
 import * as os from 'os';
 const fs = require('fs');
 const path = require('path');
-const tempdir = os.tmpdir();
+const tmpDir = os.tmpdir();
 // let foundPrompts: Array<PromptMetadata> = [];
 
 interface IPrompterChatResult extends vscode.ChatResult {
@@ -192,6 +192,8 @@ export class PrompterParticipant {
                     'Analyzing selected text... [This may take a while]'
                 );
                 stream.markdown('\n\n');
+                const startLocation = vscode.window.activeTextEditor?.selection.start;
+                const endLocation = vscode.window.activeTextEditor?.selection.end;
                 let tempPrompt =
                     await this._findCorrespondingPromptObject(selectedText);
                 if (!tempPrompt) {
@@ -490,15 +492,44 @@ export class PrompterParticipant {
                 );
             }
             stream.markdown('\n\n');
+
+            let possibly = ''; // default to delete character 
             // add poisoned examples to response numbered and separated by new line
             if (injectionVul === 'Maybe') {
-                stream.markdown('Possibly ');
+                possibly = '**Possibly** ';
             }
-            stream.markdown('Poisoned Responses Examples:');
+            //get count of unique poisoned variables
+            const poisonedVariables = new Set<string>();
+            for (let i = 0; i < poisonedExamplesSet.length; i++) {
+                poisonedVariables.add(poisonedExamplesSet[i][0]);
+            }
+
+            stream.markdown(
+                `**📈 Percentage of ${possibly} Vulnerable Variables:** ${(poisonedVariables.size / (json["total_variables_in_prompt"] as number) * 100).toFixed(2)} `
+            );
+            stream.markdown('\n\n');
+            // print the names of the variables that are vulnerable
+            stream.markdown(
+                `**🐼 ${possibly} Vulnerable Variables:** ${Array.from(
+                    poisonedVariables
+                ).join(', ')}`
+            );
+            stream.markdown('\n\n');
+
+            // calculate the percentage of successful attacks and show in :.2f format
+            stream.markdown(
+                `**📈 Percentage of ${possibly} Successful Attacks:** ${(poisonedExamplesArray.length / (json["total_attempts"] as number) * 100).toFixed(2)} `
+            );
+
+            stream.markdown('\n\n');
+
+            stream.markdown(`☠️ ${possibly} Poisoned Responses Examples:`);
             stream.markdown('\n\n');
             // convert poisoned examples array into set of unique tuples
 
-            for (let i = 0; i < poisonedExamplesSet.length; i++) {
+            // if more than 10 unique poisoned examples, print only the first 10
+
+            for (let i = 0; i < Math.min(10, poisonedExamplesSet.length); i++) {
                 const poisonedExampleResponse = poisonedExamplesSet[i][1];
                 const injectionPoint = poisonedExamplesSet[i][0].replaceAll(
                     '+',
@@ -511,11 +542,8 @@ export class PrompterParticipant {
                         `${i + 1}. **Injection Point:** ${injectionPoint}`
                     );
                     stream.markdown('\n\n');
-                    if (injectionVul === 'Maybe') {
-                        stream.markdown('**Possibly**');
-                    }
                     stream.markdown(
-                        `**Poisoned response:** ${poisonedExampleResponse.replaceAll('\n', ' ')}`
+                        `${possibly}**Poisoned response:** ${poisonedExampleResponse.replaceAll('\n', ' ')}`
                     );
                     stream.markdown('\n\n');
                 } else {
@@ -529,16 +557,13 @@ export class PrompterParticipant {
                         `${i + 1}. **Injection Point:** ${injectionPoint}`
                     );
                     stream.markdown('\n\n');
-                    if (injectionVul === 'Maybe') {
-                        stream.markdown('**Possibly**');
-                    }
                     stream.markdown(
-                        `**Poisoned response:** ${croppedExampleResponse}...`
+                        ` ${possibly}**Poisoned Response:** ${croppedExampleResponse}...`
                     );
                     // create a temporary file
 
                     const tempFile = path.join(
-                        tempdir,
+                        tmpDir,
                         `poisonedExample-${i + 1}.txt`
                     );
                     fs.writeFileSync(tempFile, poisonedExampleResponse);
