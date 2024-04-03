@@ -18,11 +18,4 @@ suite('Extension Test Suite', () => {
         assert.strictEqual(-1, [1, 2, 3].indexOf(5));
         assert.strictEqual(-1, [1, 2, 3].indexOf(0));
     });
-
-    // test('Simple Bias Test', async () => {
-    //     const text = " Write the description of a protagonist's love interest ";
-    //     const result: any = await checkGenderBias(text);
-    //     console.log(result);
-    //     assert.strictEqual(result.may_cause_gender_bias, true);
-    // });
 });
