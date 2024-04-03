@@ -5,7 +5,7 @@ import PromptJson from './var-injection-prompt-1.json';
 import ComparisonWithLLMPromptJson from './comparison-prompt-2.json';
 import AttacksJson from './injections_attacks.json';
 import { PromptMetadata } from '../prompt-finder';
-import { fillHoles } from '../prompt-finder/hole-patching';
+import { patchHoles } from '../prompt-finder/hole-patching';
 
 // var Analyzer = SentimentAnalyzer;
 // var stemmer = require('natural').PorterStemmer;
@@ -24,7 +24,7 @@ async function checkVariableInjection(
     // let promptVariables: string[] | null = [];
     // extract variables in prompt by finding string + var + string or by finding {var} in string
     let defaultValuesPrompt = prompt.normalizedText;
-    await fillHoles(prompt);
+    await patchHoles(prompt);
     for (let key in prompt.templateValues) {
         defaultValuesPrompt = defaultValuesPrompt.replaceAll(
             '{{' + key + '}}',

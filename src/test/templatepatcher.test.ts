@@ -55,7 +55,7 @@ suite('Hole Patching Test Suite', async () => {
         let results = await findPrompts(extensionUri, [
             { contents: contents, path: path },
         ]);
-        await fillHoles(results[0]).then(() => {
+        await patchHoles(results[0]).then(() => {
             for (let key in results[0].templateValues) {
                 // console.log(results[0].templateValues[key].defaultValue);
                 assert.equal(

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
 import checkGenderBias from '../modules/bias-modules/gender_bias/gender-bias-module';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
-import { fillHoles } from '../modules/prompt-finder/hole-patching';
+import { patchHoles } from '../modules/prompt-finder/hole-patching';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
 import path from 'path';
 import fs from 'fs';
@@ -213,7 +213,7 @@ export class PrompterParticipant {
                 'Some default values in the template values are empty or undefined, attempting to generate default values...'
             );
             stream.markdown('\n\n');
-            await fillHoles(tempPrompt!);
+            await patchHoles(tempPrompt!);
         }
         stream.markdown('**📝 Template Values:**');
         stream.markdown('\n\n');
