@@ -8,14 +8,14 @@ import key
 
 openai.api_key = key.secret
 
-def product_observation(prompt_product_desc):
+def product_observation(prompt_product_desc, prompt_product_desc_2):
     print("Running product observation")
     response = openai.Completion.create(
         model="text-davinci-002",
         # trained responses
         prompt="The following is a conversation with an AI Customer Segment Recommender. \
       The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.  \
-      AI, please state a insightful observation about " + prompt_product_desc + ".",
+      AI, please state a insightful observation about " + prompt_product_desc + "and"+ prompt_product_desc_2+".",
         temperature=0.9,
         max_tokens=150,
         top_p=1,

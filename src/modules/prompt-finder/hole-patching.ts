@@ -24,6 +24,7 @@ export async function patchHoles(
         }
     }
 }
+
 async function _patchValue(
     prompt: PromptMetadata,
     templateValue: PromptTemplateHole
@@ -69,6 +70,7 @@ async function _patchValue(
             readmeFileContents +
             '"';
     }
+
     const deploymentId = 'gpt-35-turbo';
     const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPromptToSend },
