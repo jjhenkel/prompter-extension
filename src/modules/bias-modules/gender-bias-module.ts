@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 
 import PromptJson from './gender_prompt_4.json';
 import { PromptMetadata } from '../prompt-finder/index.js';
-import { fillHoles } from '../prompt-finder/hole-patching.js';
+import { patchHoles } from '../prompt-finder/hole-patching.js';
 
 async function checkGenderBias(
     inputPrompt: PromptMetadata
@@ -19,25 +19,12 @@ async function checkGenderBias(
     userPromptText = userPromptText.replaceAll('__', '\n');
     let patchedPrompt = inputPrompt.normalizedText;
     // if the prompt has undefined template values, perform hole patching
-    let hasEmptyValues = false;
-    for (let key in inputPrompt.templateValues) {
-        if (!inputPrompt.templateValues[key].defaultValue) {
-            hasEmptyValues = true;
-            break;
-        }
-    }
-    if (hasEmptyValues) {
-        await fillHoles(inputPrompt);
-    }
+    await patchHoles(inputPrompt);
     for (const key in inputPrompt.templateValues) {
         let value = inputPrompt.templateValues[key].defaultValue;
         patchedPrompt = patchedPrompt.replaceAll('{{' + key + '}}', value);
     }
 
-    for (const key in inputPrompt.templateValues) {
-        let value = inputPrompt.templateValues[key].defaultValue;
-        patchedPrompt = patchedPrompt.replaceAll('{{' + key + '}}', value);
-    }
     let userPrompt = userPromptText;
     for (const variable in variables_to_inject) {
         let value = '{' + variables_to_inject[variable] + '}';
