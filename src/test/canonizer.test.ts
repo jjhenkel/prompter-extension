@@ -17,6 +17,11 @@ const templateCanonizationOutput =
 The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.  \
 AI, please state a insightful observation about {{prompt_product_desc}} .';
 
+const template2CanonizationOutput =
+    'The following is a conversation with an AI Customer Segment Recommender. \
+The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.  \
+AI, please state a insightful observation about {{prompt_product_desc}} and {{prompt_product_desc_2}}.';
+
 const installExtensionsNeeded = async () => {
     // test if all the extensions in packageJson are installed
     if (!vscode.extensions.getExtension('github.copilot')) {
@@ -130,6 +135,28 @@ suite('Canonization Test Suite', () => {
             templateCanonizationOutput.replace(/\s/g, '').replace(/\\/g, '')
         );
         assert.equal(Object.keys(results[0].templateValues).length, 1);
+        assert.equal(
+            results[0].templateValues['prompt_product_desc'].name,
+            'prompt_product_desc'
+        );
+    });
+
+    test('2 Value Canonization Test', async () => {
+        const path = vscode.Uri.joinPath(
+            extensionUri,
+            'src/test/Canonization Python Test Files/canonization-2values-test.py'
+        ).fsPath;
+        const contents = readFileSync(path, 'utf8');
+        let results = await findPrompts(extensionUri, [
+            { contents: contents, path: path },
+        ]);
+        let canonized = results[0].normalizedText;
+        // compare equality while ignoring whitespace and newlines and backslashes
+        assert.equal(
+            canonized.replace(/\s/g, '').replace(/\\/g, ''),
+            template2CanonizationOutput.replace(/\s/g, '').replace(/\\/g, '')
+        );
+        assert.equal(Object.keys(results[0].templateValues).length, 2);
         assert.equal(
             results[0].templateValues['prompt_product_desc'].name,
             'prompt_product_desc'
