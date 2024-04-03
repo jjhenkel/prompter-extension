@@ -197,7 +197,7 @@ export function canonizePromptWithTreeSitter(
             }
         }
         // assume the default of joining for other cases (addition, redirection, fstring, etc.).
-        return [childrenValues?.join('') || '', templateHoles];
+        return ['"' + childrenValues?.join('') + '"' || '', templateHoles];
     } catch (e) {
         console.log(e);
         return ['', {}];

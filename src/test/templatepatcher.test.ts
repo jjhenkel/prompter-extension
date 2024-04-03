@@ -5,7 +5,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { findPrompts } from '../modules/prompt-finder';
 import { readFileSync } from 'fs';
-import { fillHoles } from '../modules/prompt-finder/hole-patching';
+import { patchHoles } from '../modules/prompt-finder/hole-patching';
 const packageJson = require('../../package.json');
 
 const extensionUri = vscode.Uri.parse(
@@ -29,7 +29,7 @@ suite('Hole Patching Test Suite', async () => {
         let results = await findPrompts(extensionUri, [
             { contents: contents, path: path },
         ]);
-        await fillHoles(results[0]).then(() => {
+        await patchHoles(results[0]).then(() => {
             for (let key in results[0].templateValues) {
                 console.log(results[0].templateValues[key].defaultValue);
                 assert.equal(
@@ -38,7 +38,7 @@ suite('Hole Patching Test Suite', async () => {
                 );
             }
         });
-        console.log(JSON.stringify(results[0].templateValues));
+        // console.log(JSON.stringify(results[0].templateValues));
     });
 
     test('Simple Two Variable Patching Test', async () => {
@@ -50,16 +50,14 @@ suite('Hole Patching Test Suite', async () => {
         let results = await findPrompts(extensionUri, [
             { contents: contents, path: path },
         ]);
-        await fillHoles(results[0]).then(() => {
-            for (let key in results[0].templateValues) {
-                console.log(results[0].templateValues[key].defaultValue);
-                assert.equal(
-                    results[0].templateValues[key].defaultValue.length > 0,
-                    true
-                );
-            }
-        });
-        console.log(JSON.stringify(results[0].templateValues));
+        await patchHoles(results[0]);
+        for (let key in results[0].templateValues) {
+            console.log(results[0].templateValues[key].defaultValue);
+            assert.equal(
+                results[0].templateValues[key].defaultValue.length > 0,
+                true
+            );
+        }
     });
 
     test('One Variable Patching Test wit Readme', async () => {
@@ -71,7 +69,7 @@ suite('Hole Patching Test Suite', async () => {
         let results = await findPrompts(extensionUri, [
             { contents: contents, path: path },
         ]);
-        await fillHoles(results[0]).then(() => {
+        await patchHoles(results[0]).then(() => {
             for (let key in results[0].templateValues) {
                 console.log(results[0].templateValues[key].defaultValue);
                 assert.equal(
@@ -85,6 +83,5 @@ suite('Hole Patching Test Suite', async () => {
                 );
             }
         });
-        console.log(JSON.stringify(results[0].templateValues));
     });
 });

@@ -7,18 +7,24 @@ import * as fs from 'fs';
 import HoleFillingPromptJson from './hole-filling-prompt.json';
 import path from 'path';
 
-export async function fillHoles(promptObject: PromptMetadata) {
+export async function patchHoles(
+    promptObject: PromptMetadata,
+    forceRepatch: boolean = false
+) {
     for (let key in promptObject.templateValues) {
-        let fillValue = await _patchValue(
-            promptObject,
-            promptObject.templateValues[key]
-        );
-        if (fillValue.error) {
-            return;
+        if (!promptObject.templateValues[key].defaultValue || forceRepatch) {
+            let fillValue = await _patchValue(
+                promptObject,
+                promptObject.templateValues[key]
+            );
+            if (fillValue.error) {
+                return;
+            }
+            promptObject.templateValues[key].defaultValue = fillValue.value;
         }
-        promptObject.templateValues[key].defaultValue = fillValue.value;
     }
 }
+
 async function _patchValue(
     prompt: PromptMetadata,
     templateValue: PromptTemplateHole
@@ -64,6 +70,7 @@ async function _patchValue(
             readmeFileContents +
             '"';
     }
+
     const deploymentId = 'gpt-35-turbo';
     const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPromptToSend },
