@@ -5,6 +5,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { findPrompts } from '../modules/prompt-finder';
 import { readFileSync } from 'fs';
+import { Backend, setBackend } from '../modules/LLMUtils';
 const extensionUri = vscode.Uri.parse(
     __dirname.split('\\').slice(0, -2).join('/')
 );
@@ -42,6 +43,7 @@ const installExtensionsNeeded = async () => {
 };
 setup(async () => {
     await installExtensionsNeeded();
+    setBackend(Backend.Azure); // set the backend to Azure or Copilot. NOTE: Copilot Backend Testing only works in debug mode for now.
 });
 
 suite('Canonization Test Suite', () => {
