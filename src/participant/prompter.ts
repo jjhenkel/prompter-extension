@@ -35,7 +35,7 @@ export class PrompterParticipant {
 
         // Prompter is persistent, whenever a user starts interacting with @prompter, it
         // will be added to the following messages
-        prompter.isSticky = true;
+        // prompter.isSticky = true;
 
         prompter.iconPath = vscode.Uri.joinPath(
             this.extensionUri,
