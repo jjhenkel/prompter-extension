@@ -1,5 +1,5 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-import * as utils from '../utils.js';
+import * as utils from '../LLMUtils.js';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import * as vscode from 'vscode';
 
