@@ -3,8 +3,8 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-import * as LLMUtils from '../modules/utils';
-import { Backend } from '../modules/utils';
+import * as LLMUtils from '../modules/LLMUtils';
+import { Backend, GPTModel } from '../modules/LLMUtils';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import OpenAI from 'openai';
 
@@ -80,6 +80,70 @@ suite('LLMUtils Test Suite', () => {
             },
         ];
         const response = await LLMUtils.sendChatRequest(messages);
+        assert.ok(response !== undefined);
+        console.log(response);
+        assert.ok(response.startsWith('Hi') || response.startsWith('Hello'));
+    });
+
+    test('Azure Backend-powered Client Test - with Params ', async () => {
+        LLMUtils.setBackend(Backend.Azure);
+
+        let messages: ChatCompletionMessageParam[] = [
+            {
+                role: 'system',
+                content:
+                    'You are a helpful assistant that repeats exactly what the user says.',
+            },
+            {
+                role: 'user',
+                content: 'Hello',
+            },
+            {
+                role: 'system',
+                content: 'Hello',
+            },
+            {
+                role: 'user',
+                content: 'Hi',
+            },
+        ];
+        const response = await LLMUtils.sendChatRequest(messages, {
+            model: GPTModel.GPT4,
+            temperature: 0.5,
+            seed: 42,
+            stop: '\n',
+        });
+        assert.ok(response !== undefined);
+        console.log(response);
+        assert.ok(response === 'Hi');
+    });
+
+    test('Copilot Backend-powered Client Test - with Params ', async () => {
+        LLMUtils.setBackend(Backend.Copilot);
+        let messages: ChatCompletionMessageParam[] = [
+            {
+                role: 'system',
+                content:
+                    'You are a helpful assistant that repeats exactly what the user says.',
+            },
+            {
+                role: 'user',
+                content: 'Repeat after me: Hello',
+            },
+            {
+                role: 'system',
+                content: 'Hello',
+            },
+            {
+                role: 'user',
+                content: 'Hi',
+            },
+        ];
+        const response = await LLMUtils.sendChatRequest(messages, {
+            model: GPTModel.GPT3_5Turbo,
+            temperature: 0.5,
+            seed: 42,
+        });
         assert.ok(response !== undefined);
         console.log(response);
         assert.ok(response.startsWith('Hi') || response.startsWith('Hello'));
