@@ -7,6 +7,8 @@ import * as fs from 'fs';
 import HoleFillingPromptJson from './hole-filling-prompt.json';
 import path from 'path';
 
+const modelType = utils.GPTModel.GPT3_5Turbo;
+
 export async function patchHoles(
     promptObject: PromptMetadata,
     forceRepatch: boolean = false
@@ -83,14 +85,19 @@ async function _patchValue(
         return JSON.parse('{"error": " Issue during OpenAI configuration"}');
     } else {
         try {
-            const response = await client.chat.completions.create({
-                messages: messages,
-                model: deploymentId,
+            // const response = await client.chat.completions.create({
+            //     messages: messages,
+            //     model: deploymentId,
+            //     temperature: 0.3,
+            //     seed: 42,
+            // });
+            // console.log(response);
+            // const result = response.choices?.[0]?.message?.content;
+            const result = await utils.sendChatRequest(messages, {
+                model: modelType,
                 temperature: 0.3,
                 seed: 42,
             });
-            console.log(response);
-            const result = response.choices?.[0]?.message?.content;
             // convert result to json and return
             if (result !== undefined && result !== null) {
                 // if the result is I'm sorry or  I'm not sure what you're asking for, return an error
