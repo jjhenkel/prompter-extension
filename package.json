@@ -26,6 +26,7 @@
                 "id": "prompter",
                 "name": "Prompter",
                 "description": "Let's analyze and improve some prompts",
+                "isSticky": true,
                 "commands": [
                     {
                         "name": "find-prompts",

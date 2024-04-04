@@ -1,5 +1,5 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-import * as utils from '../utils';
+import * as LLMUtils from '../LLMUtils';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import PromptJson from './var-injection-prompt-1.json';
 import ComparisonWithLLMPromptJson from './comparison-prompt-2.json';
@@ -9,6 +9,7 @@ import { patchHoles } from '../prompt-finder/hole-patching';
 
 // var Analyzer = SentimentAnalyzer;
 // var stemmer = require('natural').PorterStemmer;
+const modelType = LLMUtils.GPTModel.GPT3_5Turbo;
 
 async function checkVariableInjection(
     prompt: PromptMetadata
@@ -41,7 +42,7 @@ async function checkVariableInjection(
     ];
     // console.log(messages);
     // convert messages list to chat request
-    let client = utils.getClient();
+    let client = LLMUtils.getClient();
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');
@@ -50,14 +51,21 @@ async function checkVariableInjection(
     //TODO replace variables with default values before sending to openai
     //TODO add a check to see if the prompt is too long and split it into multiple prompts
     //TODO add a rate limit strategy to deal with limit being reached
-    const response = await client.chat.completions.create({
-        messages: messages,
-        model: deploymentId,
+    // const response = await client.chat.completions.create({
+    //     messages: messages,
+    //     model: deploymentId,
+    //     temperature: 0.0,
+    //     top_p: 0.95,
+    //     seed: 42,
+    // });
+    // const result = response.choices?.[0]?.message?.content;
+
+    const result = await LLMUtils.sendChatRequest(messages, {
+        model: modelType,
         temperature: 0.0,
         top_p: 0.95,
         seed: 42,
     });
-    const result = response.choices?.[0]?.message?.content;
     // console.log(result);
     // convert result to json and return
     if (result !== undefined && result !== null) {
@@ -275,7 +283,7 @@ async function processInjection(
                     { role: 'user', content: comparisonUserPromptText },
                 ];
 
-                let client = utils.getClient();
+                let client = LLMUtils.getClient();
                 // console.log(client);
                 if (client === undefined) {
                     console.error(
@@ -285,12 +293,14 @@ async function processInjection(
                     // console.error("Client is undefined");
                     // return JSON.parse("{\"error\": \" Issue during OpenAI configuration}\"");
                 } else {
-                    const response = await client.chat.completions.create({
-                        messages: comparisonMessages,
-                        model: deploymentId,
-                        temperature: 0.3,
-                        seed: 42,
-                    });
+                    const response = await LLMUtils.sendChatRequest(
+                        comparisonMessages,
+                        {
+                            model: modelType,
+                            temperature: 0.3,
+                            seed: 42,
+                        }
+                    );
                     let comparisonResult =
                         response.choices?.[0]?.message?.content;
                     if (
