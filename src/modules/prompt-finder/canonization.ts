@@ -4,7 +4,7 @@ import { PromptTemplateHole, toVSCodePosition } from '.';
 import Parser from 'web-tree-sitter';
 import * as fs from 'fs';
 import { vsprintf } from 'sprintf-js';
-import { sendChatRequest } from '../utils';
+import { GPTModel, sendChatRequest } from '../LLMUtils';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 export async function canonizeWithTreeSitterANDCopilotGPT(
@@ -52,9 +52,9 @@ You task is to read this and convert it into a normalized string form.
 ## Instructions
 
 1. Read the Python expression.
-2. Note where there are "template holes" things like f'Blah blah {variable}' that need to be filled in.
-3. Produce as output a single string where any template holes have been normalized to a placeholder like {variable}.
-4. Any variable that can't be resolved should be converted to a placeholder like {variable}.
+2. Note where there are "template holes" things like f'Blah blah {{variable}}' that need to be filled in.
+3. Produce as output a single string where any template holes have been normalized to a placeholder like {{variable}}.
+4. Any variable that can't be resolved should be converted to a placeholder like {{variable}}.
 5. Output only the normalized string, nothing else.
             `.trim(),
         },
@@ -96,6 +96,7 @@ Here is the normalized string:
     const normalizedResponse = await sendChatRequest(messages, {
         temperature: 0.0,
         stop: ['```'],
+        model: GPTModel.GPT3_5Turbo,
     });
 
     console.log(normalizedResponse);
