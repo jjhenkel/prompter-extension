@@ -1,96 +1,97 @@
 {
-  "name": "prompter",
-  "displayName": "prompter",
-  "description": "",
-  "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.88.0"
-  },
-  "extensionDependencies": [
-    "github.copilot-chat"
-  ],
-  "categories": [
-    "Chat"
-  ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "enabledApiProposals": [
-    "chatParticipant",
-    "chatVariableResolver",
-    "languageModels"
-  ],
-  "contributes": {
-    "chatParticipants": [
-      {
-        "id": "prompter",
-        "name": "Prompter",
-        "description": "Let's analyze and improve some prompts",
-        "commands": [
-          {
-            "name": "find-prompts",
-            "description": "Find prompts in your workspace"
-          },
-          {
-            "name": "analyze-bias",
-            "description": "Analyze bias for a selected prompt"
-          },
-          {
-            "name": "help",
-            "description": "Get help with using prompter"
-          }
-        ]
-      }
+    "name": "prompter",
+    "displayName": "prompter",
+    "description": "",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.88.0"
+    },
+    "extensionDependencies": [
+        "github.copilot-chat"
     ],
-    "commands": [
-      {
-        "command": "prompter.savePrompt",
-        "title": "Save a prompt for further analysis"
-      }
-    ]
-  },
-  "main": "./out/extension.js",
-  "scripts": {
-    "vscode:prepublish": "yarn run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "yarn run compile && yarn run lint",
-    "lint": "eslint src --ext ts",
-    "test": "vscode-test",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
-    "postinstall": "husky"
-  },
-  "devDependencies": {
-    "@types/mocha": "^10.0.6",
-    "@types/node": "^20.5.9",
-    "@typescript-eslint/eslint-plugin": "^6.19.1",
-    "@typescript-eslint/parser": "^6.19.1",
-    "@vscode/test-cli": "^0.0.5",
-    "@vscode/test-electron": "^2.3.9",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.1.3",
-    "eslint-plugin-unused-imports": "^3.1.0",
-    "husky": "^9.0.11",
-    "lint-staged": "^15.2.2",
-    "prettier": "3.2.5",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
-  },
-  "dependencies": {
-    "@types/object-hash": "^3.0.6",
-    "@types/sprintf-js": "^1.1.4",
-    "axios": "^1.6.7",
-    "object-hash": "^3.0.0",
-    "openai": "^4.28.0",
-    "sprintf-js": "^1.1.3",
-    "web-tree-sitter": "^0.21.0"
-  },
-  "prettier": {
-    "trailingComma": "es5",
-    "tabWidth": 4,
-    "semi": true,
-    "singleQuote": true
-  }
+    "categories": [
+        "Chat"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "enabledApiProposals": [
+        "chatParticipant",
+        "chatVariableResolver",
+        "languageModels"
+    ],
+    "contributes": {
+        "chatParticipants": [
+            {
+                "id": "prompter",
+                "name": "Prompter",
+                "description": "Let's analyze and improve some prompts",
+                "isSticky": true,
+                "commands": [
+                    {
+                        "name": "find-prompts",
+                        "description": "Find prompts in your workspace"
+                    },
+                    {
+                        "name": "analyze-bias",
+                        "description": "Analyze bias for a selected prompt"
+                    },
+                    {
+                        "name": "help",
+                        "description": "Get help with using prompter"
+                    }
+                ]
+            }
+        ],
+        "commands": [
+            {
+                "command": "prompter.savePrompt",
+                "title": "Save a prompt for further analysis"
+            }
+        ]
+    },
+    "main": "./out/extension.js",
+    "scripts": {
+        "vscode:prepublish": "yarn run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "yarn run compile && yarn run lint",
+        "lint": "eslint src --ext ts",
+        "test": "vscode-test",
+        "format": "prettier --write \"src/**/*.ts\"",
+        "format:check": "prettier --check \"src/**/*.ts\"",
+        "postinstall": "husky"
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.6",
+        "@types/node": "^20.5.9",
+        "@typescript-eslint/eslint-plugin": "^6.19.1",
+        "@typescript-eslint/parser": "^6.19.1",
+        "@vscode/test-cli": "^0.0.5",
+        "@vscode/test-electron": "^2.3.9",
+        "eslint": "^8.56.0",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-plugin-prettier": "^5.1.3",
+        "eslint-plugin-unused-imports": "^3.1.0",
+        "husky": "^9.0.11",
+        "lint-staged": "^15.2.2",
+        "prettier": "3.2.5",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.3.3"
+    },
+    "dependencies": {
+        "@types/object-hash": "^3.0.6",
+        "@types/sprintf-js": "^1.1.4",
+        "axios": "^1.6.7",
+        "object-hash": "^3.0.0",
+        "openai": "^4.28.0",
+        "sprintf-js": "^1.1.3",
+        "web-tree-sitter": "^0.21.0"
+    },
+    "prettier": {
+        "trailingComma": "es5",
+        "tabWidth": 4,
+        "semi": true,
+        "singleQuote": true
+    }
 }
