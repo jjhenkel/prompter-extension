@@ -4,7 +4,8 @@ import { PromptTemplateHole, toVSCodePosition } from '.';
 import Parser from 'web-tree-sitter';
 import * as fs from 'fs';
 import { vsprintf } from 'sprintf-js';
-import * as vscode from 'vscode';
+import { sendChatRequest } from '../utils';
+import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 export async function canonizeWithTreeSitterANDCopilotGPT(
     sourceFile: string,
@@ -16,7 +17,7 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
         node,
         parser
     );
-    const [finalResponse, templateHoles] = await canonizeWithCopilotGPT(
+    const [finalResponse, templateHoles] = await canonizeWithLLM(
         sourceFile,
         node,
         normalizedResponse
@@ -24,13 +25,13 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
     return [finalResponse, templateHoles];
 }
 
-export const canonizeWithCopilotGPT = async (
+export const canonizeWithLLM = async (
     sourceFile: string,
     node: Parser.SyntaxNode | null,
     preNormalizedNodeTest: string = ''
     // parser: Parser
 ): Promise<[string, { [key: string]: PromptTemplateHole }]> => {
-    const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
+    // const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
 
     // Goal: take the node, convert to a string, shove it in a prompt
     // and to get back a normalized string
@@ -38,12 +39,10 @@ export const canonizeWithCopilotGPT = async (
     if (nodeAsText === '') {
         nodeAsText = node?.text || '';
     }
-
-    const normalizedPromptResult = await vscode.lm.sendChatRequest(
-        LANGUAGE_MODEL_ID,
-        [
-            new vscode.LanguageModelChatSystemMessage(
-                `
+    let messages: ChatCompletionMessageParam[] = [
+        {
+            role: 'system',
+            content: `
 # Task
 
 You will be given a Python expression. This is expression yields a string and may do so
@@ -57,53 +56,47 @@ You task is to read this and convert it into a normalized string form.
 3. Produce as output a single string where any template holes have been normalized to a placeholder like {variable}.
 4. Any variable that can't be resolved should be converted to a placeholder like {variable}.
 5. Output only the normalized string, nothing else.
-                `.trim()
-            ),
-            new vscode.LanguageModelChatSystemMessage(
-                `
+            `.trim(),
+        },
+        {
+            role: 'system',
+            content: `
 Here is the Python expression:
 \`\`\`python
 "The following is a conversation with an AI Customer Segment Recommender. \\
-      The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. \\
-      AI, please state a insightful observation about " + prompt_product_desc + "."
+  The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. \\
+  AI, please state a insightful observation about " + prompt_product_desc + "."
 \`\`\`
 Here is the normalized string:
 \`\`\`txt
-                `.trim()
-            ),
-            new vscode.LanguageModelChatSystemMessage(
-                `
+            `.trim(),
+        },
+        {
+            role: 'system',
+            content: `
 The following is a conversation with an AI Customer Segment Recommender.
 The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.
 AI, please state a insightful observation about {{prompt_product_desc}}.
 \`\`\`
-                `.trim()
-            ),
-            new vscode.LanguageModelChatUserMessage(
-                `
+            `.trim(),
+        },
+        {
+            role: 'user',
+            content: `
 Here is the Python expression:
 \`\`\`python
 ${nodeAsText}
 \`\`\`
 Here is the normalized string:
 \`\`\`txt
-                `.trim()
-            ),
-        ],
-        {
-            modelOptions: {
-                temperature: 0.0,
-                stop: ['```'],
-            },
+            `.trim(),
         },
-        new vscode.CancellationTokenSource().token
-    );
+    ];
 
-    // Build the normalized response from the stream
-    let normalizedResponse = '';
-    for await (const fragment of normalizedPromptResult.stream) {
-        normalizedResponse += fragment;
-    }
+    const normalizedResponse = await sendChatRequest(messages, {
+        temperature: 0.0,
+        stop: ['```'],
+    });
 
     console.log(normalizedResponse);
 
