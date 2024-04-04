@@ -8,6 +8,12 @@ import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 // define interface for the config json file
 
+export enum GPTModel {
+    GPT3_5Turbo,
+    GPT4,
+    GPT4_5Turbo,
+}
+
 interface configJson {
     LLM_Backend: string;
     Endpoint?: string;
@@ -124,15 +130,26 @@ export async function sendChatRequest(
             '{"error": " Issue during LLM Backend configuration"}'
         );
     } else {
+        const filteredOptions: [string, any][] = LLMOptions
+            ? Object.entries(LLMOptions).filter(([key, value]) => {
+                  return (
+                      key !== 'model' && key !== 'temperature' && key !== 'seed'
+                  );
+              })
+            : [];
+        const otherOptions: Record<string, any> =
+            Object.fromEntries(filteredOptions);
         // if backend is Azure or OpenAI
-        const otherOptions = LLMOptions?.filter(
-            (key: string) =>
-                key !== 'model' && key !== 'temperature' && key !== 'seed'
-        );
         if (client instanceof OpenAI) {
+            let model: string | undefined = undefined;
+            if (LLMOptions?.model === GPTModel.GPT4) {
+                model = 'gpt-4';
+            } else if (LLMOptions?.model === GPTModel.GPT3_5Turbo) {
+                model = 'gpt-35-turbo';
+            }
             const response = await client.chat.completions.create({
                 messages: organizedMessages,
-                model: (LLMOptions?.model as string) || 'gpt-35-turbo',
+                model: model || 'gpt-35-turbo',
                 temperature: (LLMOptions?.temperature as number) || 0.3,
                 seed: (LLMOptions?.seed as number) || 42,
                 // transform remaining LLMOptions into parameter value pairs
@@ -174,13 +191,19 @@ export async function sendChatRequest(
                     console.error('Invalid message role - skipping message');
                 }
             });
-            const model =
-                (LLMOptions?.model as string) || 'copilot-gpt-3.5-turbo';
+            let model: string | undefined = undefined;
+            if (LLMOptions?.model === GPTModel.GPT4) {
+                model = 'copilot-gpt-4';
+            } else if (LLMOptions?.model === GPTModel.GPT3_5Turbo) {
+                model = 'copilot-gpt-3.5-turbo';
+            }
+            const copyOfLLMOptions = { ...LLMOptions };
+            delete copyOfLLMOptions.model;
             const result = await client.sendChatRequest(
-                model,
+                model || 'copilot-gpt-3.5-turbo',
                 convertedMessages,
                 {
-                    modelOptions: LLMOptions,
+                    modelOptions: copyOfLLMOptions,
                 },
                 cancellationToken || new vscode.CancellationTokenSource().token
             );
