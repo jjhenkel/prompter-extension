@@ -4,7 +4,7 @@ import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import * as vscode from 'vscode';
 import { PromptMetadata, PromptTemplateHole } from './index.js';
 import * as fs from 'fs';
-import HoleFillingPromptJson from './hole-filling-prompt.json';
+import HoleFillingPromptJson from './hole-patching-prompt.json';
 import path from 'path';
 
 const modelType = utils.GPTModel.GPT3_5Turbo;
@@ -73,7 +73,7 @@ async function _patchValue(
             '"';
     }
 
-    const deploymentId = 'gpt-35-turbo';
+    // const deploymentId = 'gpt-35-turbo';
     const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPromptToSend },
         { role: 'user', content: userPromptToSend },
@@ -97,6 +97,7 @@ async function _patchValue(
                 model: modelType,
                 temperature: 0.3,
                 seed: 42,
+                // type: "json_object" // force answer to be valid json ==> NOT SUPPORTED BY AZURE
             });
             // convert result to json and return
             if (result !== undefined && result !== null) {
