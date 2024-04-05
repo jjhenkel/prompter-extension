@@ -63,6 +63,11 @@ export class PrompterParticipant {
                         label: 'Find prompts in your workspace',
                     },
                     {
+                        prompt: 'analyze-injection-vulnerability',
+                        command: 'analyze-injection-vulnerability',
+                        label: 'Analyze a prompt for injection vulnerability',
+                    },
+                    {
                         prompt: 'parse-prompt',
                         command: 'parse-prompt',
                         label: "Parse and show a prompt's internal representation and its associated generated default values",
@@ -119,6 +124,15 @@ export class PrompterParticipant {
             }
             case 'parse-prompt': {
                 await this._handleParsePrompt(request, context, stream, token);
+                return { metadata: { command: 'parse-prompt' } };
+            }
+            case 'analyze-injection-vulnerability': {
+                await this._handleInjectionVulnerability(
+                    request,
+                    context,
+                    stream,
+                    token
+                );
                 return { metadata: { command: 'parse-prompt' } };
             }
 
