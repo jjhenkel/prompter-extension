@@ -308,8 +308,8 @@ async function processInjection(
                             seed: 42,
                         }
                     );
-                    let comparisonResult =
-                        response.choices?.[0]?.message?.content;
+                    let comparisonResult = response;
+                    // response.choices?.[0]?.message?.content;
                     if (
                         comparisonResult !== undefined &&
                         comparisonResult !== null
