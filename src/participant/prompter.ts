@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
-import checkGenderBias from '../modules/bias-modules/gender_bias/gender-bias-module';
+import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import { patchHoles } from '../modules/prompt-finder/hole-patching';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
@@ -97,6 +97,7 @@ export class PrompterParticipant {
             vscode.commands.registerCommand(
                 PROMPT_SAVE_FOR_ANALYSIS,
                 (args: PromptMetadata) => {
+                    // const text = args;
                     // copy the prompt to an internal variable
                     this.SavedPrompt = args;
                     // show a message to the user
@@ -450,7 +451,7 @@ export class PrompterParticipant {
             //create a button to save the prompt to clipboard
             stream.button({
                 command: PROMPT_SAVE_FOR_ANALYSIS,
-                arguments: [prompt.rawText],
+                arguments: [prompt],
                 title: 'Save for Analysis',
             });
 
@@ -478,29 +479,56 @@ export class PrompterParticipant {
         stream.markdown('\n\n');
         // check if text is selected
         const editor = vscode.window.activeTextEditor;
+        let tempPrompt: PromptMetadata | undefined = undefined;
         if (editor) {
             const selectedText = editor.document.getText(editor.selection);
             if (selectedText) {
-                // if selected text is found, analyze it
-                stream.markdown('Analyzing selected text...');
+                const startLocation =
+                    vscode.window.activeTextEditor?.selection.start;
+                const endLocation =
+                    vscode.window.activeTextEditor?.selection.end;
+
+                stream.markdown(
+                    'Parsing selected text and looking for corresponding prompt...'
+                );
                 stream.markdown('\n\n');
-                const biasAnalysis = await checkGenderBias(selectedText);
-                // Render the results
-                stream.markdown('**📊 Bias Analysis Results**:');
-                stream.markdown('\n\n');
-                stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
-                return { metadata: { command: 'analyze-bias' } };
+                tempPrompt = await this._findCorrespondingPromptObject(
+                    selectedText,
+                    startLocation,
+                    endLocation
+                );
+
+                if (!tempPrompt) {
+                    stream.markdown(
+                        'No corresponding prompt found in the current file, make sure you select the complete prompt, and that the prompt is saved in the current file, and the file is correctly written.'
+                    );
+                    stream.markdown('\n\n');
+                    stream.markdown(
+                        ' Will attempt to parse the saved prompt instead'
+                    );
+                } else {
+                    stream.markdown('Analyzing selected text...');
+                    stream.markdown('\n\n');
+                    const biasAnalysis = await checkGenderBias(tempPrompt);
+                    // Render the results
+                    stream.markdown('**📊 Bias Analysis Results**:');
+                    stream.markdown('\n\n');
+                    stream.markdown(
+                        this.handleGenderBiasAnalysis(biasAnalysis)
+                    );
+                    return { metadata: { command: 'analyze-bias' } };
+                }
             }
         }
-        const prompt = this.SavedPrompt?.rawText;
-        if (prompt !== '') {
-            // stream.markdown('Analyzing prompt saved for analysis...');
-            // const biasAnalysis = await checkGenderBias(prompt);
-            // // Render the results
-            // stream.markdown('**📊 Bias Analysis Results**:');
-            // stream.markdown('\n\n');
-            // stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
-            // return { metadata: { command: 'analyze-bias' } };
+        const prompt = this.SavedPrompt;
+        if (prompt !== undefined) {
+            stream.markdown('Analyzing prompt saved for analysis...');
+            const biasAnalysis = await checkGenderBias(prompt);
+            // Render the results
+            stream.markdown('**📊 Bias Analysis Results**:');
+            stream.markdown('\n\n');
+            stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
+            return { metadata: { command: 'analyze-bias' } };
         } else {
             if (editor) {
                 stream.markdown(
@@ -694,12 +722,12 @@ export class PrompterParticipant {
                                 (prompts[i].startLocation.line ===
                                     startLocation.line &&
                                     prompts[i].startLocation.character <=
-                                        startLocation.character)) &&
+                                    startLocation.character)) &&
                             (prompts[i].endLocation.line > endLocation.line ||
                                 (prompts[i].endLocation.line ===
                                     endLocation.line &&
                                     prompts[i].endLocation.character >=
-                                        endLocation.character))
+                                    endLocation.character))
                         ) {
                             return prompts[i];
                         }
