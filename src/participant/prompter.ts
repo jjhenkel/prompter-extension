@@ -722,12 +722,12 @@ export class PrompterParticipant {
                                 (prompts[i].startLocation.line ===
                                     startLocation.line &&
                                     prompts[i].startLocation.character <=
-                                    startLocation.character)) &&
+                                        startLocation.character)) &&
                             (prompts[i].endLocation.line > endLocation.line ||
                                 (prompts[i].endLocation.line ===
                                     endLocation.line &&
                                     prompts[i].endLocation.character >=
-                                    endLocation.character))
+                                        endLocation.character))
                         ) {
                             return prompts[i];
                         }
