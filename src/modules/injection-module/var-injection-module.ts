@@ -35,7 +35,7 @@ async function checkVariableInjection(
 
     let default_response: string = '';
     // send the prompt to azure openai using client
-    const deploymentId = 'gpt-35-turbo';
+    // const deploymentId = 'gpt-35-turbo';
     const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPromptText },
         { role: 'user', content: defaultValuesPrompt },
@@ -90,7 +90,7 @@ async function checkVariableInjection(
             attack_tuple,
             systemPromptText,
             client,
-            deploymentId,
+            modelType,
             default_response,
             // analyzer,
             // default_sentiment,
@@ -177,7 +177,7 @@ async function processInjection(
     attack_tuple: string[],
     systemPromptText: string,
     client: any,
-    deploymentId: string,
+    modelType: LLMUtils.GPTModel,
     defaultResponse: string,
     // analyzer: SentimentAnalyzer,
     // default_sentiment: number,
@@ -213,15 +213,22 @@ async function processInjection(
             { role: 'system', content: systemPromptText },
             { role: 'user', content: injected_prompt },
         ];
-        const response = await client.chat.completions.create({
-            messages: messages,
-            model: deploymentId,
+        // const response = await client.chat.completions.create({
+        //     messages: messages,
+        //     model: deploymentId,
+        //     temperature: 0.0,
+        //     top_p: 0.95,
+        //     seed: 42,
+        // });
+
+        // let injectedResult = response.choices?.[0]?.message?.content;
+        let injectedResult = await LLMUtils.sendChatRequest(messages, {
+            model: modelType,
             temperature: 0.0,
             top_p: 0.95,
             seed: 42,
         });
 
-        let injectedResult = response.choices?.[0]?.message?.content;
         // convert attack to word list
         const attack_list = attack.split(' ');
         if (injectedResult !== undefined && injectedResult !== null) {
