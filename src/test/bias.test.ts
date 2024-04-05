@@ -28,7 +28,7 @@ const installExtensionsNeeded = async () => {
 };
 setup(async () => {
     await installExtensionsNeeded();
-    setBackend(Backend.Copilot); // set the backend to Azure or Copilot. NOTE: Copilot Backend Testing only works in debug mode for now.
+    setBackend(Backend.Azure); // set the backend to Azure or Copilot. NOTE: Copilot Backend Testing only works in debug mode for now.
 });
 
 suite('Bias Test Suite', () => {

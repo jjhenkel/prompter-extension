@@ -19,7 +19,8 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
     );
     const [finalResponse, templateHoles] = await canonizeWithLLM(
         sourceFile,
-        node
+        node,
+        normalizedResponse
     );
     return [finalResponse, templateHoles];
 }
