@@ -3,10 +3,34 @@ import * as vscode from 'vscode';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
 import { readFileSync } from 'fs';
 import { findPrompts } from '../modules/prompt-finder';
+import { Backend, setBackend } from '../modules/LLMUtils';
 
 const extensionUri = vscode.Uri.parse(
     __dirname.split('\\').slice(0, -2).join('/')
 );
+
+const installExtensionsNeeded = async () => {
+    // test if all the extensions in packageJson are installed
+    if (!vscode.extensions.getExtension('github.copilot')) {
+        await vscode.commands.executeCommand(
+            'workbench.extensions.installExtension',
+            'github.copilot-chat'
+        );
+    }
+
+    if (!vscode.extensions.getExtension('github.copilot-chat')) {
+        await vscode.commands.executeCommand(
+            'workbench.extensions.installExtension',
+            'github.copilot-chat'
+        );
+    }
+    // wait for one minute
+    // await new Promise((resolve) => setTimeout(resolve, 60000));
+};
+setup(async () => {
+    await installExtensionsNeeded();
+    setBackend(Backend.Azure); // set the backend to Azure or Copilot. NOTE: Copilot Backend Testing only works in debug mode for now.
+});
 
 suite('Prompt Injection Test Suite', () => {
     vscode.window.showInformationMessage('Starting prompt tests.');
