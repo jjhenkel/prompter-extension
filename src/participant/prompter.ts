@@ -152,7 +152,12 @@ export class PrompterParticipant {
                 return { metadata: { command: 'analyze-bias' } };
             }
             case 'suggest-by-rules': {
-                await this._handleSuggestByRules(request, context, stream, token);
+                await this._handleSuggestByRules(
+                    request,
+                    context,
+                    stream,
+                    token
+                );
                 return { metadata: { command: 'suggest-by-rules' } };
             }
             default: {
@@ -741,7 +746,7 @@ export class PrompterParticipant {
             stream.markdown(
                 'No prompt found saved and no text selected in active editor'
             );
-        } else{
+        } else {
             stream.markdown('No prompt found saved and no active editor');
         }
         return { metadata: { command: 'suggest-by-rules' } };
@@ -749,7 +754,7 @@ export class PrompterParticipant {
 
     private handleSuggestImprovement(json: JSONSchemaObject): string {
         let return_message = '';
-        if (json["error"]) {
+        if (json['error']) {
             return_message += 'Error: ';
             return_message += json['error'] as string;
             return_message += '\n\n';
