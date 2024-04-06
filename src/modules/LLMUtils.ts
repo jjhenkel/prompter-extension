@@ -8,12 +8,20 @@ import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 // define interface for the config json file
 export const GPTModel = {
-    GPT3_5Turbo: { OpenAI: 'gpt-3.5-turbo', Azure: 'gpt-35-turbo', Copilot: 'copilot-gpt-3.5-turbo' },
+    GPT3_5Turbo: {
+        OpenAI: 'gpt-3.5-turbo',
+        Azure: 'gpt-35-turbo',
+        Copilot: 'copilot-gpt-3.5-turbo',
+    },
     GPT4: { OpenAI: 'gpt-4', Azure: 'gpt-4', Copilot: 'copilot-gpt-4' },
-    GPT4_Turbo: { OpenAI: 'gpt-4-turbo-preview', Azure: 'gpt-4-turbo-preview', Copilot: 'copilot-gpt-3.5-turbo'},
+    GPT4_Turbo: {
+        OpenAI: 'gpt-4-turbo-preview',
+        Azure: 'gpt-4-turbo-preview',
+        Copilot: 'copilot-gpt-3.5-turbo',
+    },
 } as const;
 
-export type GPTModel = typeof GPTModel[keyof typeof GPTModel];
+export type GPTModel = (typeof GPTModel)[keyof typeof GPTModel];
 
 interface configJson {
     LLM_Backend: string;
@@ -115,7 +123,7 @@ function getAzureClient() {
 }
 
 function getOpenAIClient() {
-    return new OpenAI({apiKey: process.env.OPENAI_API_KEY ?? getAPIKey()});
+    return new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? getAPIKey() });
 }
 
 export async function sendChatRequest(
@@ -128,14 +136,12 @@ export async function sendChatRequest(
     if (client === undefined) {
         console.error('Client is undefined');
         return '{"error": "Issue during LLM Backend configuration"}';
-    } 
+    }
 
     const filteredOptions: [string, any][] = LLMOptions
         ? Object.entries(LLMOptions).filter(([key, value]) => {
-                return (
-                    key !== 'model' && key !== 'temperature' && key !== 'seed'
-                );
-            })
+              return key !== 'model' && key !== 'temperature' && key !== 'seed';
+          })
         : [];
     const otherOptions: Record<string, any> =
         Object.fromEntries(filteredOptions);
@@ -152,7 +158,7 @@ export async function sendChatRequest(
         });
         // if (getDirectResponse) {
         //     return response;
-        // } 
+        // }
 
         const result = response.choices?.[0]?.message?.content;
         if (result !== null) {
@@ -166,9 +172,7 @@ export async function sendChatRequest(
         organizedMessages.forEach((message) => {
             if (message.role === 'system') {
                 convertedMessages.push(
-                    new vscode.LanguageModelChatSystemMessage(
-                        message.content
-                    )
+                    new vscode.LanguageModelChatSystemMessage(message.content)
                 );
             } else if (message.role === 'user') {
                 convertedMessages.push(
@@ -190,7 +194,9 @@ export async function sendChatRequest(
         if (LLMOptions?.model === GPTModel.GPT4_Turbo) {
             // TODO: Does this not exist?
             // model = 'copilot-gpt-4-turbo';
-            console.warn('Copilot GPT4Turbo does not exist. Using GPT3.5 turbo instead.');
+            console.warn(
+                'Copilot GPT4Turbo does not exist. Using GPT3.5 turbo instead.'
+            );
         }
 
         const copyOfLLMOptions = { ...LLMOptions };

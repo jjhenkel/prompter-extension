@@ -63,14 +63,14 @@ async function suggestImprovement(
         model: utils.GPTModel.GPT4_Turbo,
         temperature: 0.3,
         seed: 42,
-        response_format: {type: "json_object"},
+        response_format: { type: 'json_object' },
     });
 
     try {
         return JSON.parse(result);
     } catch (e) {
         console.log(result);
-        return {"error": "Failed to parse JSON response"};
+        return { error: 'Failed to parse JSON response' };
     }
 }
 
