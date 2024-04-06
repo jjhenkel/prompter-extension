@@ -39,17 +39,14 @@ const systemPromptText = `Here are 26 prompt principles:
 
 Act like a highly skilled prompt engineer. Your task is to create the best prompt possible using the list 26 principles from the list above.
 
-Follow these tasks step-by-step:
+First, write the purpose of the prompt, then rewrite the user's prompt using those 26 prompting principles.
 
-Step 1: Read the entire list of 26 prompt principles. Analyze and explain each one of those 26 prompting principles.
-
-Step 2: Rewrite the user's prompt using those 26 prompting principles. 
-
-Respond with a JSON object containing two keys "step1" and "step2", respectively mapping to the analysis and explanation to the 26 prompting principles and the prompt you created.
+Respond with a JSON object containing two keys "purpose" and "suggestion", respectively mapping to the analysis and the prompt you created.
+Example input: "Help me improve my essay to be more logical. Essay: {essay}"
 Example response:
 {
-    "step1": "Here is the analysis and explanation for each of the 26 prompting principles...",
-    "step2": "Think step by step..."
+    "purpose": "The user wants to make edits to their essay which improve it. The essay is provided in the input.",
+    "suggestion": "###Instruction###\nYour task is to help me improve my essay to be more logical. You MUST ensure that your answer is unbiased and does not rely on stereotypes. Think step by step and use simple English like you're explaining something to a 5-year-old. You will be penalized if the improvement suggestions are not logical.\n\n###Example###\nOriginal sentence: 'The quick brown fox jumps over the lazy dog.'\nImproved sentence: 'The agile brown fox leaps over the lethargic dog.'\n\n###Question###\nHelp me improve my essay to be more logical. Essay: {essay}"
 }
 
 Take a deep breath and work on this problem step-by-step.`;
@@ -63,17 +60,18 @@ async function suggestImprovement(
     ];
     console.log(messages);
     let result = await utils.sendChatRequest(messages, {
-        model: utils.GPTModel.GPT3_5Turbo,
+        model: utils.GPTModel.GPT4_Turbo,
         temperature: 0.3,
         seed: 42,
-        max_tokens: 1000,
+        response_format: {type: "json_object"},
     });
 
-    console.log(result);
-    if (result === undefined || result === null) {
-        result = '{"error": "No response from Azure OpenAI"}';
+    try {
+        return JSON.parse(result);
+    } catch (e) {
+        console.log(result);
+        return {"error": "Failed to parse JSON response"};
     }
-    return JSON.parse(result);
 }
 
 export default suggestImprovement;
