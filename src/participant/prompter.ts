@@ -722,7 +722,10 @@ export class PrompterParticipant {
         stream: vscode.ChatResponseStream,
         token: vscode.CancellationToken
     ) {
-        this._sendCommandStartMessage(stream, 'suggest a new prompt using rules suggested by OpenAI');
+        this._sendCommandStartMessage(
+            stream,
+            'suggest a new prompt using rules suggested by OpenAI'
+        );
 
         const prompt = await this._getPrompt(stream);
         if (prompt) {
@@ -731,7 +734,7 @@ export class PrompterParticipant {
             // Render the results
             stream.markdown('** Suggestion Results**:\n\n');
             stream.markdown(this.handleSuggestImprovement(suggestion));
-        } 
+        }
         return { metadata: { command: 'suggest-by-rules' } };
     }
 
@@ -752,11 +755,12 @@ export class PrompterParticipant {
 
         return return_message;
     }
-    
-    _sendCommandStartMessage(stream: vscode.ChatResponseStream, command: string) {
-        stream.markdown(
-            `This module will attempt to ${command}.\n\n`
-        );
+
+    _sendCommandStartMessage(
+        stream: vscode.ChatResponseStream,
+        command: string
+    ) {
+        stream.markdown(`This module will attempt to ${command}.\n\n`);
         stream.markdown(
             'It will default to using the text selected in the editor as a prompt.\n\n'
         );
@@ -773,8 +777,7 @@ export class PrompterParticipant {
         if (selectedText) {
             const startLocation =
                 vscode.window.activeTextEditor?.selection.start;
-            const endLocation =
-                vscode.window.activeTextEditor?.selection.end;
+            const endLocation = vscode.window.activeTextEditor?.selection.end;
 
             stream.markdown(
                 'Parsing selected text and looking for corresponding prompt...\n\n'

@@ -46,7 +46,7 @@ async function checkVariableInjection(
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');
-        return {"error": " Issue during OpenAI configuration"};
+        return { error: ' Issue during OpenAI configuration' };
     }
     //TODO replace variables with default values before sending to openai
     //TODO add a check to see if the prompt is too long and split it into multiple prompts
@@ -71,7 +71,7 @@ async function checkVariableInjection(
     if (result !== undefined && result !== null) {
         default_response = JSON.stringify(result);
     } else {
-        return {"error": "No response from Azure OpenAI"};
+        return { error: 'No response from Azure OpenAI' };
     }
     let attackTuples = AttacksJson.attacks.slice(0, 4); // only use first 4 attacks for testing
     let poisoned_responses: string[] = [];
