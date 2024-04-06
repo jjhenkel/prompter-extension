@@ -722,86 +722,90 @@ export class PrompterParticipant {
         stream: vscode.ChatResponseStream,
         token: vscode.CancellationToken
     ) {
-        stream.markdown(
-            'This module will attempt to improve your prompts based on rules suggested by OpenAI.'
-        );
-        stream.markdown('\n\n');
-        stream.markdown(
-            'It will default to using the text selected in the editor as a prompt.'
-        );
-        stream.markdown('\n\n');
-        stream.markdown(
-            'If no text is selected, it will default to using the prompt saved internally via the find prompts command.'
-        );
-        stream.markdown('\n\n');
+        this._sendCommandStartMessage(stream, 'suggest a new prompt using rules suggested by OpenAI');
 
         const prompt = await this._getPrompt(stream);
-        if (prompt !== undefined) {
+        if (prompt) {
             stream.markdown('\n\n');
             const suggestion = await suggestImprovement(prompt);
             // Render the results
             stream.markdown('** Suggestion Results**:\n\n');
             stream.markdown(this.handleSuggestImprovement(suggestion));
-        } else if (vscode.window.activeTextEditor) {
-            stream.markdown(
-                'No prompt found saved and no text selected in active editor'
-            );
-        } else {
-            stream.markdown('No prompt found saved and no active editor');
-        }
+        } 
         return { metadata: { command: 'suggest-by-rules' } };
     }
 
-    private handleSuggestImprovement(json: JSONSchemaObject): string {
+    private handleSuggestImprovement(response: JSONSchemaObject): string {
         let return_message = '';
-        if (json['error']) {
+        if (response.error) {
             return_message += 'Error: ';
-            return_message += json['error'] as string;
+            return_message += response.error as string;
+            return_message += '\n\n';
+        } else if (response.suggestion) {
+            return_message += ' **Suggestion:** \n\n';
+            return_message += response.suggestion as string;
             return_message += '\n\n';
         } else {
-            return_message += ' **Suggestion:** \n\n';
-            return_message += json['step2'] as string;
+            return_message += 'Response from API was poorly formatted.';
             return_message += '\n\n';
         }
 
         return return_message;
     }
+    
+    _sendCommandStartMessage(stream: vscode.ChatResponseStream, command: string) {
+        stream.markdown(
+            `This module will attempt to ${command}.\n\n`
+        );
+        stream.markdown(
+            'It will default to using the text selected in the editor as a prompt.\n\n'
+        );
+        stream.markdown(
+            'If no text is selected, it will default to using the prompt saved internally via the find prompts command.\n\n'
+        );
+    }
 
     async _getPrompt(stream: vscode.ChatResponseStream) {
         const editor = vscode.window.activeTextEditor;
+        let prompt = this.SavedPrompt;
 
-        if (editor) {
-            const selectedText = editor.document.getText(editor.selection);
-            if (selectedText) {
-                const startLocation =
-                    vscode.window.activeTextEditor?.selection.start;
-                const endLocation =
-                    vscode.window.activeTextEditor?.selection.end;
+        const selectedText = editor?.document.getText(editor.selection);
+        if (selectedText) {
+            const startLocation =
+                vscode.window.activeTextEditor?.selection.start;
+            const endLocation =
+                vscode.window.activeTextEditor?.selection.end;
 
-                stream.markdown(
-                    'Parsing selected text and looking for corresponding prompt...'
-                );
-                stream.markdown('\n\n');
-                let tempPrompt = await this._findCorrespondingPromptObject(
-                    selectedText,
-                    startLocation,
-                    endLocation
-                );
+            stream.markdown(
+                'Parsing selected text and looking for corresponding prompt...\n\n'
+            );
+            let tempPrompt = await this._findCorrespondingPromptObject(
+                selectedText,
+                startLocation,
+                endLocation
+            );
 
-                if (tempPrompt) {
-                    return tempPrompt;
-                }
+            if (tempPrompt) {
+                prompt = tempPrompt;
+            } else {
                 stream.markdown(
-                    'No corresponding prompt found in the current file, make sure you select the complete prompt, and that the prompt is saved in the current file, and the file is correctly written.'
+                    'No corresponding prompt found in the current file, make sure you select the complete prompt, and that the prompt is saved in the current file, and the file is correctly written.\n\n'
                 );
-                stream.markdown('\n\n');
                 stream.markdown(
-                    ' Will attempt to parse the saved prompt instead'
+                    'Will attempt to parse the saved prompt instead\n\n'
                 );
             }
         }
 
-        return this.SavedPrompt;
+        if (!prompt && editor) {
+            stream.markdown(
+                'No prompt found saved and no text selected in active editor'
+            );
+        } else if (!prompt) {
+            stream.markdown('No prompt found saved and no active editor');
+        }
+
+        return prompt;
     }
 
     async _findCorrespondingPromptObject(
