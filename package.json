@@ -41,6 +41,10 @@
                         "description": "Analyze injection vulnerability of a selected prompt"
                     },
                     {
+                        "name": "suggest-by-rules",
+                        "description": "Suggest improvements for a prompt based on OpenAI rules"
+                    },
+                    {
                         "name": "help",
                         "description": "Get help with using prompter"
                     },
