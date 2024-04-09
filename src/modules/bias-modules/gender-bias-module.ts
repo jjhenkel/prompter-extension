@@ -43,11 +43,17 @@ async function checkGenderBias(
         console.error('Client is undefined');
         return JSON.parse('{"error": " Issue during OpenAI configuration"}');
     } else {
-        const result = await utils.sendChatRequest(messages, {
-            model: utils.GPTModel.GPT3_5Turbo,
-            temperature: 0.3,
-            seed: 42,
-        });
+        const result = await utils.sendChatRequest(
+            messages,
+            {
+                model: utils.GPTModel.GPT3_5Turbo,
+                temperature: 0.3,
+                seed: 42,
+            },
+            undefined,
+            false,
+            true
+        );
         // const response = await client.chat.completions.create({
         //     messages: messages,
         //     model: deploymentId,

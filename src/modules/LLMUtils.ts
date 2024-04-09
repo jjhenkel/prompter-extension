@@ -8,11 +8,21 @@ import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 // define interface for the config json file
 
-export enum GPTModel {
-    GPT3_5Turbo,
-    GPT4,
-    GPT4_5Turbo,
-}
+export const GPTModel = {
+    GPT3_5Turbo: {
+        OpenAI: 'gpt-3.5-turbo',
+        Azure: 'gpt-35-turbo',
+        Copilot: 'copilot-gpt-3.5-turbo',
+    },
+    GPT4: { OpenAI: 'gpt-4', Azure: 'gpt-4', Copilot: 'copilot-gpt-4' },
+    GPT4_Turbo: {
+        OpenAI: 'gpt-4-turbo-preview',
+        Azure: 'gpt-4-turbo-preview',
+        Copilot: 'copilot-gpt-3.5-turbo',
+    },
+} as const;
+
+export type GPTModel = (typeof GPTModel)[keyof typeof GPTModel];
 
 interface configJson {
     LLM_Backend: string;
@@ -121,7 +131,8 @@ export async function sendChatRequest(
     organizedMessages: ChatCompletionMessageParam[],
     LLMOptions?: { [name: string]: any },
     cancellationToken?: vscode.CancellationToken,
-    getDirectResponse?: boolean
+    getDirectResponse?: boolean,
+    addFailureMessage?: boolean
 ) {
     let client = getClient();
     if (client === undefined) {
@@ -140,6 +151,13 @@ export async function sendChatRequest(
         const otherOptions: Record<string, any> =
             Object.fromEntries(filteredOptions);
         // if backend is Azure or OpenAI
+        if (addFailureMessage) {
+            organizedMessages.push({
+                role: 'user',
+                content:
+                    'If you encounter any problems fulfilling this request, please start your response with " I am sorry "',
+            });
+        }
         if (client instanceof OpenAI) {
             let model: string | undefined = undefined;
             if (LLMOptions?.model === GPTModel.GPT4) {
@@ -160,10 +178,24 @@ export async function sendChatRequest(
             } else {
                 const result = response.choices?.[0]?.message?.content;
                 if (result !== undefined && result !== null) {
+                    if (result.startsWith('I am sorry')) {
+                        console.error(
+                            'LLM failed to generate an appropriate response, and I am sorry was returned'
+                        );
+                        return (
+                            '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
+                            result +
+                            '"}'
+                        );
+                    }
                     return result;
                 } else {
                     console.error('No response from LLM');
-                    return '{"error": "No response from Azure OpenAI}"';
+                    return (
+                        '{"error": "No response from"' +
+                        configuration.LLM_Backend +
+                        ' "LLM"}'
+                    );
                 }
             }
         } else {
@@ -211,7 +243,26 @@ export async function sendChatRequest(
             for await (const fragment of result.stream) {
                 completeResult += fragment;
             }
-            return completeResult;
+            if (completeResult != '') {
+                if (completeResult.startsWith('I am sorry')) {
+                    console.error(
+                        'LLM failed to generate an appropriate response, and I am sorry was returned'
+                    );
+                    return (
+                        '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
+                        result +
+                        '"}'
+                    );
+                }
+                return completeResult;
+            } else {
+                console.error('No response from LLM');
+                return (
+                    '{"error": "No response from"' +
+                    configuration.LLM_Backend +
+                    ' "LLM"}'
+                );
+            }
         }
     }
 }
