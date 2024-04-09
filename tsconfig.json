@@ -1,15 +1,15 @@
 {
-  "compilerOptions": {
-    "module": "Node16",
-    "target": "ES2022",
-    "outDir": "out",
-    "lib": [
-      "ES2022"
-    ],
-    "sourceMap": true,
-    "rootDir": "src",
-    "strict": true,
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
-  },
+    "compilerOptions": {
+        "module": "NodeNext",
+        "target": "ES2022",
+        "outDir": "out",
+        "lib": ["ES2022"],
+        "sourceMap": true,
+        "rootDir": "src",
+        "strict": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "baseUrl": "."
+    },
+    "include": ["src/**/*"]
 }
