@@ -41,7 +41,7 @@ async function checkGenderBias(
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');
-        return JSON.parse('{"error": " Issue during OpenAI configuration"}');
+        return { error: 'Issue during OpenAI configuration' };
     } else {
         const result = await utils.sendChatRequest(messages, {
             model: utils.GPTModel.GPT3_5Turbo,
@@ -61,7 +61,7 @@ async function checkGenderBias(
             const result_json = JSON.parse(result);
             return result_json;
         } else {
-            return JSON.parse('{"error": "No response from Azure OpenAI}"');
+            return { error: 'No response from Azure OpenAI' };
         }
     }
 }

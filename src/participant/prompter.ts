@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
 import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import suggestImprovement from '../modules/optimize-modules/suggest-by-rules-module';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import { patchHoles } from '../modules/prompt-finder/hole-patching';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
@@ -78,6 +79,11 @@ export class PrompterParticipant {
                         label: 'Analyze bias for a selected prompt',
                     },
                     {
+                        prompt: 'suggest-by-rules',
+                        command: 'suggest-by-rules',
+                        label: 'Suggest a new prompt using rules',
+                    },
+                    {
                         prompt: 'help',
                         command: 'help',
                         label: 'Get help with using prompter',
@@ -144,6 +150,15 @@ export class PrompterParticipant {
             case 'analyze-bias': {
                 await this._handleAnalyzeBias(request, context, stream, token);
                 return { metadata: { command: 'analyze-bias' } };
+            }
+            case 'suggest-by-rules': {
+                await this._handleSuggestByRules(
+                    request,
+                    context,
+                    stream,
+                    token
+                );
+                return { metadata: { command: 'suggest-by-rules' } };
             }
             default: {
                 stream.markdown(
@@ -540,9 +555,10 @@ export class PrompterParticipant {
             return { metadata: { command: 'analyze-bias' } };
         }
     }
+
     private handleGenderBiasAnalysis(json: JSONSchemaObject): string {
         // get gender_bias value
-        var return_message = '';
+        let return_message = '';
         const genderBias: boolean = json['gender_bias'] as boolean;
         const genderBiasPotential: boolean = json[
             'may_cause_gender_bias'
@@ -699,6 +715,102 @@ export class PrompterParticipant {
             }
         }
     }
+
+    private async _handleSuggestByRules(
+        request: vscode.ChatRequest,
+        context: vscode.ChatContext,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken
+    ) {
+        this._sendCommandStartMessage(
+            stream,
+            'suggest a new prompt using rules suggested by OpenAI'
+        );
+
+        const prompt = await this._getPrompt(stream);
+        if (prompt) {
+            stream.markdown('\n\n');
+            const suggestion = await suggestImprovement(prompt);
+            // Render the results
+            stream.markdown('** Suggestion Results**:\n\n');
+            stream.markdown(this.handleSuggestImprovement(suggestion));
+        }
+        return { metadata: { command: 'suggest-by-rules' } };
+    }
+
+    private handleSuggestImprovement(response: JSONSchemaObject): string {
+        let return_message = '';
+        if (response.error) {
+            return_message += 'Error: ';
+            return_message += response.error as string;
+            return_message += '\n\n';
+        } else if (response.suggestion) {
+            return_message += ' **Suggestion:** \n\n';
+            return_message += response.suggestion as string;
+            return_message += '\n\n';
+        } else {
+            return_message += 'Response from API was poorly formatted.';
+            return_message += '\n\n';
+        }
+
+        return return_message;
+    }
+
+    _sendCommandStartMessage(
+        stream: vscode.ChatResponseStream,
+        command: string
+    ) {
+        stream.markdown(`This module will attempt to ${command}.\n\n`);
+        stream.markdown(
+            'It will default to using the text selected in the editor as a prompt.\n\n'
+        );
+        stream.markdown(
+            'If no text is selected, it will default to using the prompt saved internally via the find prompts command.\n\n'
+        );
+    }
+
+    async _getPrompt(stream: vscode.ChatResponseStream) {
+        const editor = vscode.window.activeTextEditor;
+        let prompt = this.SavedPrompt;
+
+        const selectedText = editor?.document.getText(editor.selection);
+        if (selectedText) {
+            const startLocation =
+                vscode.window.activeTextEditor?.selection.start;
+            const endLocation = vscode.window.activeTextEditor?.selection.end;
+
+            stream.markdown(
+                'Parsing selected text and looking for corresponding prompt...\n\n'
+            );
+            let tempPrompt = await this._findCorrespondingPromptObject(
+                selectedText,
+                startLocation,
+                endLocation
+            );
+
+            if (tempPrompt) {
+                prompt = tempPrompt;
+            } else {
+                stream.markdown(
+                    'No corresponding prompt found in the current file, make sure you select the complete prompt, and that the prompt is saved in the current file, and the file is correctly written.\n\n'
+                );
+                stream.markdown(
+                    'Will attempt to parse the saved prompt instead\n\n'
+                );
+            }
+        }
+
+        if (!prompt && editor) {
+            stream.markdown(
+                'No prompt found saved and no text selected in active editor'
+            );
+        } else if (!prompt) {
+            stream.markdown('No prompt found saved and no active editor');
+        }
+
+        return prompt;
+    }
+
     async _findCorrespondingPromptObject(
         promptText: string,
         startLocation?: vscode.Position,

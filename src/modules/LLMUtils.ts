@@ -7,12 +7,21 @@ import config from './config.json';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 // define interface for the config json file
+export const GPTModel = {
+    GPT3_5Turbo: {
+        OpenAI: 'gpt-3.5-turbo',
+        Azure: 'gpt-35-turbo',
+        Copilot: 'copilot-gpt-3.5-turbo',
+    },
+    GPT4: { OpenAI: 'gpt-4', Azure: 'gpt-4', Copilot: 'copilot-gpt-4' },
+    GPT4_Turbo: {
+        OpenAI: 'gpt-4-turbo-preview',
+        Azure: 'gpt-4-turbo-preview',
+        Copilot: 'copilot-gpt-3.5-turbo',
+    },
+} as const;
 
-export enum GPTModel {
-    GPT3_5Turbo,
-    GPT4,
-    GPT4_5Turbo,
-}
+export type GPTModel = (typeof GPTModel)[keyof typeof GPTModel];
 
 interface configJson {
     LLM_Backend: string;
@@ -114,7 +123,7 @@ function getAzureClient() {
 }
 
 function getOpenAIClient() {
-    throw new Error('Function not implemented.');
+    return new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? getAPIKey() });
 }
 
 export async function sendChatRequest(
@@ -126,93 +135,85 @@ export async function sendChatRequest(
     let client = getClient();
     if (client === undefined) {
         console.error('Client is undefined');
-        return JSON.parse(
-            '{"error": " Issue during LLM Backend configuration"}'
-        );
-    } else {
-        const filteredOptions: [string, any][] = LLMOptions
-            ? Object.entries(LLMOptions).filter(([key, value]) => {
-                  return (
-                      key !== 'model' && key !== 'temperature' && key !== 'seed'
-                  );
-              })
-            : [];
-        const otherOptions: Record<string, any> =
-            Object.fromEntries(filteredOptions);
-        // if backend is Azure or OpenAI
-        if (client instanceof OpenAI) {
-            let model: string | undefined = undefined;
-            if (LLMOptions?.model === GPTModel.GPT4) {
-                model = 'gpt-4';
-            } else if (LLMOptions?.model === GPTModel.GPT3_5Turbo) {
-                model = 'gpt-35-turbo';
-            }
-            const response = await client.chat.completions.create({
-                messages: organizedMessages,
-                model: model || 'gpt-35-turbo',
-                temperature: (LLMOptions?.temperature as number) || 0.3,
-                seed: (LLMOptions?.seed as number) || 42,
-                // transform remaining LLMOptions into parameter value pairs
-                ...otherOptions,
-            });
-            if (getDirectResponse) {
-                return response;
-            } else {
-                const result = response.choices?.[0]?.message?.content;
-                if (result !== undefined && result !== null) {
-                    return result;
-                } else {
-                    console.error('No response from LLM');
-                    return '{"error": "No response from Azure OpenAI}"';
-                }
-            }
+        return '{"error": "Issue during LLM Backend configuration"}';
+    }
+
+    const filteredOptions: [string, any][] = LLMOptions
+        ? Object.entries(LLMOptions).filter(([key, value]) => {
+              return key !== 'model' && key !== 'temperature' && key !== 'seed';
+          })
+        : [];
+    const otherOptions: Record<string, any> =
+        Object.fromEntries(filteredOptions);
+
+    // if backend is Azure or OpenAI
+    if (client instanceof OpenAI) {
+        const response = await client.chat.completions.create({
+            messages: organizedMessages,
+            model: LLMOptions?.model[config.LLM_Backend],
+            temperature: (LLMOptions?.temperature as number) ?? 0.3,
+            seed: (LLMOptions?.seed as number) ?? 42,
+            // transform remaining LLMOptions into parameter value pairs
+            ...otherOptions,
+        });
+        // if (getDirectResponse) {
+        //     return response;
+        // }
+
+        const result = response.choices?.[0]?.message?.content;
+        if (result !== null) {
+            return result;
         } else {
-            let convertedMessages: vscode.LanguageModelChatMessage[] = [];
-            organizedMessages.forEach((message) => {
-                if (message.role === 'system') {
-                    convertedMessages.push(
-                        new vscode.LanguageModelChatSystemMessage(
-                            message.content
-                        )
-                    );
-                } else if (message.role === 'user') {
-                    convertedMessages.push(
-                        new vscode.LanguageModelChatUserMessage(
-                            message.content as string
-                        )
-                    );
-                } else if (message.role === 'assistant') {
-                    convertedMessages.push(
-                        new vscode.LanguageModelChatAssistantMessage(
-                            message.content as string
-                        )
-                    );
-                } else {
-                    console.error('Invalid message role - skipping message');
-                }
-            });
-            let model: string | undefined = undefined;
-            if (LLMOptions?.model === GPTModel.GPT4) {
-                model = 'copilot-gpt-4';
-            } else if (LLMOptions?.model === GPTModel.GPT3_5Turbo) {
-                model = 'copilot-gpt-3.5-turbo';
-            }
-            const copyOfLLMOptions = { ...LLMOptions };
-            delete copyOfLLMOptions.model;
-            const result = await client.sendChatRequest(
-                model || 'copilot-gpt-3.5-turbo',
-                convertedMessages,
-                {
-                    modelOptions: copyOfLLMOptions,
-                },
-                cancellationToken || new vscode.CancellationTokenSource().token
-            );
-            let completeResult = '';
-            for await (const fragment of result.stream) {
-                completeResult += fragment;
-            }
-            return completeResult;
+            console.error('No response from LLM');
+            return '{"error": "No response from Azure/OpenAI"}';
         }
+    } else {
+        let convertedMessages: vscode.LanguageModelChatMessage[] = [];
+        organizedMessages.forEach((message) => {
+            if (message.role === 'system') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatSystemMessage(message.content)
+                );
+            } else if (message.role === 'user') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatUserMessage(
+                        message.content as string
+                    )
+                );
+            } else if (message.role === 'assistant') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatAssistantMessage(
+                        message.content as string
+                    )
+                );
+            } else {
+                console.error('Invalid message role - skipping message');
+            }
+        });
+
+        if (LLMOptions?.model === GPTModel.GPT4_Turbo) {
+            // TODO: Does this not exist?
+            // model = 'copilot-gpt-4-turbo';
+            console.warn(
+                'Copilot GPT4Turbo does not exist. Using GPT3.5 turbo instead.'
+            );
+        }
+
+        const copyOfLLMOptions = { ...LLMOptions };
+        delete copyOfLLMOptions.model;
+        const result = await client.sendChatRequest(
+            LLMOptions?.model.Copilot ?? 'copilot-gpt-3.5-turbo',
+            convertedMessages,
+            {
+                modelOptions: copyOfLLMOptions,
+            },
+            cancellationToken || new vscode.CancellationTokenSource().token
+        );
+        let completeResult = '';
+        for await (const fragment of result.stream) {
+            completeResult += fragment;
+        }
+        return completeResult;
     }
 }
 // TODO - Add more utility functions here
