@@ -85,49 +85,50 @@ async function _patchValue(
         return JSON.parse('{"error": " Issue during OpenAI configuration"}');
     } else {
         try {
-            // const response = await client.chat.completions.create({
-            //     messages: messages,
-            //     model: deploymentId,
-            //     temperature: 0.3,
-            //     seed: 42,
-            // });
-            // console.log(response);
-            // const result = response.choices?.[0]?.message?.content;
-            const result = await utils.sendChatRequest(messages, {
-                model: modelType,
-                temperature: 0.3,
-                seed: 42,
-                // type: "json_object" // force answer to be valid json ==> NOT SUPPORTED BY AZURE
-            });
+            const result = await utils.sendChatRequest(
+                messages,
+                {
+                    model: modelType,
+                    temperature: 0.3,
+                    seed: 42,
+                    // type: "json_object" // force answer to be valid json ==> NOT SUPPORTED BY AZURE
+                },
+                undefined,
+                false,
+                true
+            );
             // convert result to json and return
             if (result !== undefined && result !== null) {
-                // if the result is I'm sorry or  I'm not sure what you're asking for, return an error
-                if (
-                    result.startsWith('Sorry') ||
-                    result.startsWith("I'm sorry") ||
-                    result.includes("I'm not sure")
-                ) {
+                if (result.error) {
                     return JSON.parse(
-                        '{"error": "Issue during Azure OpenAI completion: I\'m sorry or I\'m not sure"}'
+                        '{ "error": ' +
+                            result.error +
+                            ', "error_message": "' +
+                            result.error_message +
+                            '"}'
                     );
-                }
-                try {
-                    const result_json = JSON.parse(result);
-                    return result_json;
-                } catch (error) {
-                    return JSON.parse(
-                        '{"error": "Issue during Azure OpenAI completion: Invalid JSON"}'
-                    );
+                } else {
+                    try {
+                        // const result_json = JSON.parse(result);
+                        // return result_json;
+                    } catch (error) {
+                        return JSON.parse(
+                            '{"error": "Issue during LLM completion: Invalid JSON"}'
+                        );
+                    }
                 }
             } else {
-                return JSON.parse('{"error": "No response from Azure OpenAI}"');
+                return JSON.parse('{"error": "No response from LLM}"');
             }
         } catch (error) {
-            console.error('Error during Azure OpenAI completion:', error);
+            console.error('Error during LLM completion:', error);
             return JSON.parse(
-                '{"error": "Issue during Azure OpenAI completion"}'
+                '{"error": "Issue during LLM completion", "error_message": "' +
+                    error +
+                    '"}'
             );
         }
+        return JSON.parse('{"error": "Issue during LLM completion"}');
     }
 }
 

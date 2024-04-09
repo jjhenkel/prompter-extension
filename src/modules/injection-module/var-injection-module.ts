@@ -60,12 +60,18 @@ async function checkVariableInjection(
     // });
     // const result = response.choices?.[0]?.message?.content;
 
-    const result = await LLMUtils.sendChatRequest(messages, {
-        model: modelType,
-        temperature: 0.0,
-        top_p: 0.95,
-        seed: 42,
-    });
+    const result = await LLMUtils.sendChatRequest(
+        messages,
+        {
+            model: modelType,
+            temperature: 0.0,
+            top_p: 0.95,
+            seed: 42,
+        },
+        undefined,
+        false,
+        true
+    );
     // console.log(result);
     // convert result to json and return
     if (result !== undefined && result !== null) {
@@ -222,12 +228,18 @@ async function processInjection(
         // });
 
         // let injectedResult = response.choices?.[0]?.message?.content;
-        let injectedResult = await LLMUtils.sendChatRequest(messages, {
-            model: modelType,
-            temperature: 0.0,
-            top_p: 0.95,
-            seed: 42,
-        });
+        let injectedResult = await LLMUtils.sendChatRequest(
+            messages,
+            {
+                model: modelType,
+                temperature: 0.0,
+                top_p: 0.95,
+                seed: 42,
+            },
+            undefined,
+            false,
+            true
+        );
 
         // convert attack to word list
         const attack_list = attack.split(' ');
@@ -306,7 +318,10 @@ async function processInjection(
                             model: modelType,
                             temperature: 0.3,
                             seed: 42,
-                        }
+                        },
+                        undefined,
+                        false,
+                        true
                     );
                     let comparisonResult = response;
                     // response.choices?.[0]?.message?.content;
