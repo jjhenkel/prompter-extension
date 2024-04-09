@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import Parser from 'web-tree-sitter';
 import hash from 'object-hash';
+import { canonizeWithTreeSitterANDCopilotGPT } from './canonization';
+// import { patchValue } from './holePatching';
 
 // This type represents a hole in a prompt template.
 // Ex: "Hello, my name is {name}" would have a hole named "name"
@@ -10,6 +12,7 @@ export type PromptTemplateHole = {
     rawText: string;
     startLocation: vscode.Position;
     endLocation: vscode.Position;
+    defaultValue?: any;
 };
 
 // This type represents a parameter associated with a prompt
@@ -41,11 +44,16 @@ export type PromptMetadata = {
         [key: string]: PromptParameter;
     };
     sourceFilePath: string;
+    // promptNode?: Parser.SyntaxNode;
 };
 
 // This module defines a function, findPrompts, that takes
+
 // a tree sitter tree and users a cursor to walk the tree
 // and find prompts.
+
+let parserG: Parser | null = null;
+
 export const findPrompts = async (
     extensionUri: vscode.Uri,
     filesToScan: Array<{ contents: string; path: string }>
@@ -65,6 +73,7 @@ export const findPrompts = async (
     // Create a parser
     const parser = new Parser();
     parser.setLanguage(pythonGrammar);
+    parserG = parser;
 
     // Try and parse, then walk the tree and return results
     const promptMatches = await Promise.all(
@@ -75,25 +84,33 @@ export const findPrompts = async (
                 let results: PromptMetadata[] = [];
 
                 results = results.concat(
-                    _findOpenAICompletionCreate(file.path, tree, pythonGrammar)
+                    await _findOpenAICompletionCreate(
+                        file.path,
+                        tree,
+                        pythonGrammar
+                    )
                 );
                 results = results.concat(
-                    _findOpenAIChatCalls(file.path, tree, pythonGrammar)
+                    await _findOpenAIChatCalls(file.path, tree, pythonGrammar)
                 );
                 results = results.concat(
-                    _findAnthropicChatCalls(file.path, tree, pythonGrammar)
+                    await _findAnthropicChatCalls(
+                        file.path,
+                        tree,
+                        pythonGrammar
+                    )
                 );
                 results = results.concat(
-                    _findCohereChatCalls(file.path, tree, pythonGrammar)
+                    await _findCohereChatCalls(file.path, tree, pythonGrammar)
                 );
                 results = results.concat(
-                    _findPromptInName(file.path, tree, pythonGrammar)
+                    await _findPromptInName(file.path, tree, pythonGrammar)
                 );
                 results = results.concat(
-                    _findTemplateClass(file.path, tree, pythonGrammar)
+                    await _findTemplateClass(file.path, tree, pythonGrammar)
                 );
                 results = results.concat(
-                    _findMessageDictionary(file.path, tree, pythonGrammar)
+                    await _findMessageDictionary(file.path, tree, pythonGrammar)
                 );
 
                 return results;
@@ -126,7 +143,10 @@ const _getOpenAIPromptMetadataQuery = (
     );
 };
 
-const _findOpenAICompletionCreate = (
+export const toVSCodePosition = (position: Parser.Point) =>
+    new vscode.Position(position.row, position.column);
+
+const _findOpenAICompletionCreate = async (
     sourceFilePath: string,
     tree: Parser.Tree,
     language: Parser.Language
@@ -157,8 +177,7 @@ const _findOpenAICompletionCreate = (
     );
 
     // Utility funcs
-    const toVSCodePosition = (position: Parser.Point) =>
-        new vscode.Position(position.row, position.column);
+
     const greatGreatGrandparentEquals = (
         node: Parser.SyntaxNode,
         other: Parser.SyntaxNode
@@ -188,7 +207,7 @@ const _findOpenAICompletionCreate = (
             continue;
         }
 
-        const promptMeta = _createPromptMetadata(
+        const promptMeta = await _createPromptMetadata(
             sourceFilePath,
             callEverythingCapture,
             promptArgument.node
@@ -251,7 +270,7 @@ const _findOpenAICompletionCreate = (
     return results;
 };
 
-const _findAnthropicChatCalls = (
+const _findAnthropicChatCalls = async (
     sourceFilePath: string,
     tree: Parser.Tree,
     language: Parser.Language
@@ -274,23 +293,28 @@ const _findAnthropicChatCalls = (
     const isPrompt = (node: Parser.SyntaxNode) =>
         node.type === 'keyword_argument' && 'messages' === node.child(0)?.text;
 
-    return query
-        .captures(tree.rootNode)
-        .filter((capture) => capture.name === 'call.everything')
-        .map((capture) => {
-            // Find the first positional argument, or the argument with key prompt/message/text
-            // Let's grab the matching prompt argument
-            let argument_list = capture.node.lastChild;
-            let prompt = argument_list?.children.find(isPrompt)?.child(2);
+    return (
+        await Promise.all(
+            query
+                .captures(tree.rootNode)
+                .filter((capture) => capture.name === 'call.everything')
+                .map((capture) => {
+                    // Find the first positional argument, or the argument with key prompt/message/text
+                    // Let's grab the matching prompt argument
+                    let argument_list = capture.node.lastChild;
+                    let prompt = argument_list?.children
+                        .find(isPrompt)
+                        ?.child(2);
 
-            return prompt
-                ? _createPromptMetadata(sourceFilePath, capture, prompt)
-                : undefined;
-        })
-        .filter((x) => x !== undefined) as PromptMetadata[];
+                    return prompt
+                        ? _createPromptMetadata(sourceFilePath, capture, prompt)
+                        : undefined;
+                })
+        )
+    ).filter((x) => x !== undefined) as unknown as PromptMetadata[];
 };
 
-const _findOpenAIChatCalls = (
+const _findOpenAIChatCalls = async (
     sourceFilePath: string,
     tree: Parser.Tree,
     language: Parser.Language
@@ -314,27 +338,30 @@ const _findOpenAIChatCalls = (
         node.type === 'keyword_argument' &&
         ['prompt', 'messages'].includes(node.child(0)?.text ?? '');
 
-    return query
-        .captures(tree.rootNode)
-        .filter((capture) => capture.name === 'call.everything')
-        .map((capture) => {
-            // Find the first positional argument, or the argument with key prompt/message/text
-            // Let's grab the matching prompt argument
-            let argument_list = capture.node.lastChild;
-            let prompt = argument_list?.children.find(isPrompt);
+    return (
+        await Promise.all(
+            query
+                .captures(tree.rootNode)
+                .filter((capture) => capture.name === 'call.everything')
+                .map((capture) => {
+                    // Find the first positional argument, or the argument with key prompt/message/text
+                    // Let's grab the matching prompt argument
+                    let argument_list = capture.node.lastChild;
+                    let prompt = argument_list?.children.find(isPrompt);
 
-            if (prompt && prompt.type === 'keyword_argument') {
-                prompt = prompt.child(2) ?? prompt;
-            }
+                    if (prompt && prompt.type === 'keyword_argument') {
+                        prompt = prompt.child(2) ?? prompt;
+                    }
 
-            return prompt
-                ? _createPromptMetadata(sourceFilePath, capture, prompt)
-                : undefined;
-        })
-        .filter((x) => x !== undefined) as PromptMetadata[];
+                    return prompt
+                        ? _createPromptMetadata(sourceFilePath, capture, prompt)
+                        : undefined;
+                })
+        )
+    ).filter((x) => x !== undefined) as unknown as PromptMetadata[];
 };
 
-const _findCohereChatCalls = (
+const _findCohereChatCalls = async (
     sourceFilePath: string,
     tree: Parser.Tree,
     language: Parser.Language
@@ -356,30 +383,33 @@ const _findCohereChatCalls = (
     const isPositional = (node: Parser.SyntaxNode) =>
         node.type === 'string' || node.type === 'identifier';
 
-    return query
-        .captures(tree.rootNode)
-        .filter((capture) => capture.name === 'call.everything')
-        .map((capture) => {
-            // Find the first positional argument, or the argument with key prompt/message/text
-            // Let's grab the matching prompt argument
-            let argument_list = capture.node.lastChild;
-            let prompt = argument_list?.children.find(
-                (node) => isPositional(node) || isKeyword(node)
-            );
+    return (
+        await Promise.all(
+            query
+                .captures(tree.rootNode)
+                .filter((capture) => capture.name === 'call.everything')
+                .map((capture) => {
+                    // Find the first positional argument, or the argument with key prompt/message/text
+                    // Let's grab the matching prompt argument
+                    let argument_list = capture.node.lastChild;
+                    let prompt = argument_list?.children.find(
+                        (node) => isPositional(node) || isKeyword(node)
+                    );
 
-            if (prompt && prompt.type === 'keyword_argument') {
-                prompt = prompt.child(2) ?? prompt;
-            }
+                    if (prompt && prompt.type === 'keyword_argument') {
+                        prompt = prompt.child(2) ?? prompt;
+                    }
 
-            // Add to results
-            return prompt
-                ? _createPromptMetadata(sourceFilePath, capture, prompt)
-                : undefined;
-        })
-        .filter((x) => x !== undefined) as PromptMetadata[];
+                    // Add to results
+                    return prompt
+                        ? _createPromptMetadata(sourceFilePath, capture, prompt)
+                        : undefined;
+                })
+        )
+    ).filter((x) => x !== undefined) as unknown as PromptMetadata[];
 };
 
-const _findPromptInName = (
+const _findPromptInName = async (
     sourceFilePath: string,
     tree: Parser.Tree,
     language: Parser.Language
@@ -406,23 +436,28 @@ const _findPromptInName = (
   `.trim()
     );
 
-    return query
-        .captures(tree.rootNode)
-        .concat(augmented_query.captures(tree.rootNode))
-        .filter((capture) => capture.name === 'everything')
-        .map((capture) => {
-            // The 0th child is the assignment, then {0: name, 1: operator, 2: value}
-            const prompt = capture.node.child(0)?.childForFieldName('right');
+    return (
+        await Promise.all(
+            query
+                .captures(tree.rootNode)
+                .concat(augmented_query.captures(tree.rootNode))
+                .filter((capture) => capture.name === 'everything')
+                .map((capture) => {
+                    // The 0th child is the assignment, then {0: name, 1: operator, 2: value}
+                    const prompt = capture.node
+                        .child(0)
+                        ?.childForFieldName('right');
 
-            // If we didn't find a prompt argument, skip this capture
-            return prompt
-                ? _createPromptMetadata(sourceFilePath, capture, prompt)
-                : undefined;
-        })
-        .filter((x) => x !== undefined) as PromptMetadata[];
+                    // If we didn't find a prompt argument, skip this capture
+                    return prompt
+                        ? _createPromptMetadata(sourceFilePath, capture, prompt)
+                        : undefined;
+                })
+        )
+    ).filter((x) => x !== undefined) as unknown as PromptMetadata[];
 };
 
-const _findTemplateClass = (
+const _findTemplateClass = async (
     sourceFilePath: string,
     tree: Parser.Tree,
     language: Parser.Language
@@ -443,24 +478,27 @@ const _findTemplateClass = (
     ) @everything`
     );
 
-    return from_query
-        .captures(tree.rootNode)
-        .concat(template_query.captures(tree.rootNode))
-        .filter((capture) => capture.name === 'everything')
-        .map((capture) => {
-            const prompt = capture.node
-                .childForFieldName('arguments')
-                ?.child(0);
+    return (
+        await Promise.all(
+            from_query
+                .captures(tree.rootNode)
+                .concat(template_query.captures(tree.rootNode))
+                .filter((capture) => capture.name === 'everything')
+                .map((capture) => {
+                    const prompt = capture.node
+                        .childForFieldName('arguments')
+                        ?.child(0);
 
-            // If we didn't find a prompt argument, skip this capture
-            return prompt
-                ? _createPromptMetadata(sourceFilePath, capture, prompt)
-                : undefined;
-        })
-        .filter((x) => x !== undefined) as PromptMetadata[];
+                    // If we didn't find a prompt argument, skip this capture
+                    return prompt
+                        ? _createPromptMetadata(sourceFilePath, capture, prompt)
+                        : undefined;
+                })
+        )
+    ).filter((x) => x !== undefined) as unknown as PromptMetadata[];
 };
 
-const _findMessageDictionary = (
+const _findMessageDictionary = async (
     sourceFilePath: string,
     tree: Parser.Tree,
     language: Parser.Language
@@ -474,24 +512,31 @@ const _findMessageDictionary = (
     ) @everything`
     );
 
-    return query
-        .captures(tree.rootNode)
-        .filter((capture) => capture.name === 'everything')
-        .map((capture) => {
-            const prompt = query
-                .captures(capture.node)
-                .filter((capture) => capture.name === 'value')
-                .pop();
+    return (
+        await Promise.all(
+            query
+                .captures(tree.rootNode)
+                .filter((capture) => capture.name === 'everything')
+                .map((capture) => {
+                    const prompt = query
+                        .captures(capture.node)
+                        .filter((capture) => capture.name === 'value')
+                        .pop();
 
-            // If we didn't find a prompt argument, skip this capture
-            return prompt
-                ? _createPromptMetadata(sourceFilePath, capture, prompt.node)
-                : undefined;
-        })
-        .filter((x) => x !== undefined) as PromptMetadata[];
+                    // If we didn't find a prompt argument, skip this capture
+                    return prompt
+                        ? _createPromptMetadata(
+                              sourceFilePath,
+                              capture,
+                              prompt.node
+                          )
+                        : undefined;
+                })
+        )
+    ).filter((x) => x !== undefined) as PromptMetadata[];
 };
 
-const _createPromptMetadata = (
+const _createPromptMetadata = async (
     filepath: string,
     everything: Parser.QueryCapture,
     promptNode: Parser.SyntaxNode
@@ -507,9 +552,6 @@ const _createPromptMetadata = (
             text: everything.node.text,
         }),
     } as PromptMetadata;
-
-    const toVSCodePosition = (position: Parser.Point) =>
-        new vscode.Position(position.row, position.column);
 
     // Grab some meta on the parent call
     promptMeta.rawTextOfParentCall = everything.node.text;
@@ -532,8 +574,17 @@ const _createPromptMetadata = (
     );
 
     // The template holes and normalized text will be dealt with later
-    promptMeta.templateValues = {};
-    promptMeta.normalizedText = '';
-
+    try {
+        [promptMeta.normalizedText, promptMeta.templateValues] =
+            // await canonizeWithCopilotGPT(promptMeta.sourceFilePath, promptNode);
+            // await canonizeWithCopilotGPT(promptMeta.sourceFilePath, promptNode);
+            await canonizeWithTreeSitterANDCopilotGPT(
+                promptMeta.sourceFilePath,
+                promptNode,
+                parserG!
+            );
+    } catch (e) {
+        console.error(e);
+    }
     return promptMeta;
 };

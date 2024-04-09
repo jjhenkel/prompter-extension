@@ -34,7 +34,8 @@
                 "showReuseMessage": false,
                 "close": false,
                 "group": "Clean"
-            }
+            },
+            "problemMatcher": []
         }
     ]
 }
