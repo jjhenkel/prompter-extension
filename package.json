@@ -101,6 +101,7 @@
         "openai": "^4.28.0",
         "sprintf-js": "^1.1.3",
         "string-comparison": "^1.3.0",
+        "ts-retry": "^4.2.5",
         "web-tree-sitter": "^0.21.0"
     },
     "prettier": {

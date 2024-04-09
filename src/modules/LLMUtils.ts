@@ -5,8 +5,32 @@ import * as vscode from 'vscode';
 // load the config json
 import config from './config.json';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { createExponetialDelay, retryAsync, waitUntilAsync } from 'ts-retry';
 
 // define interface for the config json file
+
+async function retryExponential<T>(
+    fn: () => Promise<T>,
+    maxTry: number = 10,
+    maxTimeout: number = 10000
+): Promise<T> {
+    const delay = createExponetialDelay(200);
+    return await ((await waitUntilAsync(async () => {
+        return await retryAsync(fn, {
+            maxTry,
+            delay,
+            onError: (error: Error) => {
+                console.error(`Error on retry attempt: ${error.message}`);
+            },
+            onMaxRetryFunc: (error: Error) => {
+                {
+                    console.error(`MaxRetries reached: ${error.message}`);
+                }
+            },
+        });
+    }, maxTimeout)) as Promise<T>);
+}
+
 export const GPTModel = {
     GPT3_5Turbo: {
         OpenAI: 'gpt-3.5-turbo',
@@ -141,8 +165,8 @@ export async function sendChatRequest(
 
     const filteredOptions: [string, any][] = LLMOptions
         ? Object.entries(LLMOptions).filter(([key, value]) => {
-            return key !== 'model' && key !== 'temperature' && key !== 'seed';
-        })
+              return key !== 'model' && key !== 'temperature' && key !== 'seed';
+          })
         : [];
     const otherOptions: Record<string, any> =
         Object.fromEntries(filteredOptions);
@@ -157,6 +181,7 @@ export async function sendChatRequest(
             // transform remaining LLMOptions into parameter value pairs
             ...otherOptions,
         });
+
         // if (getDirectResponse) {
         //     return response;
         // }

@@ -99,26 +99,16 @@ async function _patchValue(
             );
             // convert result to json and return
             if (result !== undefined && result !== null) {
-                if (result.error) {
+                try {
+                    const result_json = JSON.parse(result);
+                    return result_json;
+                } catch (error) {
                     return JSON.parse(
-                        '{ "error": ' +
-                            result.error +
-                            ', "error_message": "' +
-                            result.error_message +
-                            '"}'
+                        '{"error": "Issue during LLM completion: Invalid JSON"}'
                     );
-                } else {
-                    try {
-                        // const result_json = JSON.parse(result);
-                        // return result_json;
-                    } catch (error) {
-                        return JSON.parse(
-                            '{"error": "Issue during LLM completion: Invalid JSON"}'
-                        );
-                    }
                 }
             } else {
-                return JSON.parse('{"error": "No response from LLM}"');
+                return JSON.parse('{"error": "No response from LLM"}');
             }
         } catch (error) {
             console.error('Error during LLM completion:', error);
