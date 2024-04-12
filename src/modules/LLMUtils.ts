@@ -12,19 +12,19 @@ import { createExponetialDelay, retryAsync, waitUntilAsync } from 'ts-retry';
 async function retryExponential<T>(
     fn: () => Promise<T>,
     maxTry: number = 10,
-    maxTimeout: number = 10000
+    maxTimeout: number = 600000
 ): Promise<T> {
-    const delay = createExponetialDelay(200);
+    const delay = createExponetialDelay(3000);
     return await ((await waitUntilAsync(async () => {
         return await retryAsync(fn, {
             maxTry,
             delay,
             onError: (error: Error) => {
-                console.error(`Error on retry attempt: ${error.message}`);
+                console.error(`Error on re/try:"${error.message}" Retrying...`);
             },
             onMaxRetryFunc: (error: Error) => {
                 {
-                    console.error(`MaxRetries reached: ${error.message}`);
+                    console.error(`Max Retries reached, error:" ${error.message}"`);
                 }
             },
         });
@@ -114,7 +114,7 @@ export function getClient() {
     }
 }
 
-function getAzureClient() {
+function getAzureClient(): OpenAI | undefined {
     let endpoint: string | undefined;
     let credential: string | undefined;
     if (process.env.AZURE_OPENAI_ENDPOINT) {
@@ -146,7 +146,7 @@ function getAzureClient() {
     return client;
 }
 
-function getOpenAIClient() {
+function getOpenAIClient(): OpenAI {
     return new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? getAPIKey() });
 }
 
@@ -154,45 +154,82 @@ export async function sendChatRequest(
     organizedMessages: ChatCompletionMessageParam[],
     LLMOptions?: { [name: string]: any },
     cancellationToken?: vscode.CancellationToken,
-    getDirectResponse?: boolean,
+    cleanJsonOutput?: boolean,
     addFailureMessage?: boolean
-) {
+): Promise<string> {
     let client = getClient();
-    if (client === undefined) {
+    if (client === undefined || client === null) {
         console.error('Client is undefined');
         return '{"error": "Issue during LLM Backend configuration"}';
     }
 
     const filteredOptions: [string, any][] = LLMOptions
         ? Object.entries(LLMOptions).filter(([key, value]) => {
-              return key !== 'model' && key !== 'temperature' && key !== 'seed';
-          })
+            return key !== 'model' && key !== 'temperature' && key !== 'seed';
+        })
         : [];
     const otherOptions: Record<string, any> =
         Object.fromEntries(filteredOptions);
 
+    if (addFailureMessage) {
+        organizedMessages.push({
+            role: 'user',
+            content:
+                'If you encounter any problems fulfilling this request, please start your response with " I am sorry "',
+        });
+    }
+
     // if backend is Azure or OpenAI
     if (client instanceof OpenAI) {
-        const response = await client.chat.completions.create({
-            messages: organizedMessages,
-            model: LLMOptions?.model[config.LLM_Backend],
-            temperature: (LLMOptions?.temperature as number) ?? 0.3,
-            seed: (LLMOptions?.seed as number) ?? 42,
-            // transform remaining LLMOptions into parameter value pairs
-            ...otherOptions,
+        const response = await retryExponential(async () => {
+            if (client && client instanceof OpenAI) {
+                return await
+                    client.chat.completions.create({
+                        messages: organizedMessages,
+                        model: LLMOptions?.model[config.LLM_Backend],
+                        temperature: (LLMOptions?.temperature as number) ?? 0.3,
+                        seed: (LLMOptions?.seed as number) ?? 42,
+                        // transform remaining LLMOptions into parameter value pairs
+                        ...otherOptions,
+                    });
+            }
         });
-
         // if (getDirectResponse) {
         //     return response;
         // }
-
-        const result = response.choices?.[0]?.message?.content;
+        let result = null;
+        if (response) { result = response.choices?.[0]?.message?.content; }
         if (result !== null) {
+            if (result.startsWith('I am sorry')) {
+                // console.error(
+                // 'LLM failed to generate an appropriate response, and I am sorry was returned'
+                // );
+                return (
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
+                    result +
+                    '"}'
+                );
+            }
+            if (cleanJsonOutput) {
+                // resolve issue with trailing output 
+                // find last occurrence of } in result string
+                let last_occurrence = result.lastIndexOf('}');
+                // remove everything after the last occurrence
+                result = result.substring(
+                    0,
+                    last_occurrence + 1);
+            }
             return result;
         } else {
             console.error('No response from LLM');
-            return '{"error": "No response from Azure/OpenAI"}';
+            return (
+                '{"error": "No response from"' +
+                configuration.LLM_Backend +
+                ' "LLM"}'
+            );
         }
+
+
     } else {
         let convertedMessages: vscode.LanguageModelChatMessage[] = [];
         organizedMessages.forEach((message) => {
@@ -227,19 +264,44 @@ export async function sendChatRequest(
 
         const copyOfLLMOptions = { ...LLMOptions };
         delete copyOfLLMOptions.model;
-        const result = await client.sendChatRequest(
-            LLMOptions?.model.Copilot ?? 'copilot-gpt-3.5-turbo',
-            convertedMessages,
-            {
-                modelOptions: copyOfLLMOptions,
-            },
-            cancellationToken || new vscode.CancellationTokenSource().token
-        );
+        const result = await retryExponential(async () => {
+            if (client && 'sendChatRequest' in client) {
+                return await client.sendChatRequest(
+                    LLMOptions?.model.Copilot ?? 'copilot-gpt-3.5-turbo',
+                    convertedMessages,
+                    {
+                        modelOptions: copyOfLLMOptions,
+                    },
+                    cancellationToken || new vscode.CancellationTokenSource().token
+                );
+            }
+        });
         let completeResult = '';
-        for await (const fragment of result.stream) {
-            completeResult += fragment;
+        if (result !== null && result !== undefined) {
+            for await (const fragment of result.stream) {
+                completeResult += fragment;
+            }
         }
-        return completeResult;
+        if (completeResult !== '') {
+            if (completeResult.startsWith('I am sorry')) {
+                console.error(
+                    'LLM failed to generate an appropriate response, and I am sorry was returned'
+                );
+                return (
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
+                    completeResult +
+                    '"}'
+                );
+            }
+            return completeResult;
+        } else {
+            console.error('No response from LLM');
+            return (
+                '{"error": "No response from"' +
+                configuration.LLM_Backend +
+                ' "LLM"}'
+            );
+        }
     }
 }
 // TODO - Add more utility functions here

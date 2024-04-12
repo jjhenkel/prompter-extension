@@ -94,7 +94,7 @@ async function _patchValue(
                     // type: "json_object" // force answer to be valid json ==> NOT SUPPORTED BY AZURE
                 },
                 undefined,
-                false,
+                true,
                 true
             );
             // convert result to json and return

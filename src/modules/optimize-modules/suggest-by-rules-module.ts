@@ -43,12 +43,13 @@ First, write the purpose of the prompt, then rewrite the user's prompt using tho
 
 Respond with a JSON object containing two keys "purpose" and "suggestion", respectively mapping to the analysis and the prompt you created.
 Example input: "Help me improve my essay to be more logical. Essay: {essay}"
-Example response:
+Example response:"
 {
     "purpose": "The user wants to make edits to their essay which improve it. The essay is provided in the input.",
     "suggestion": "###Instruction###\nYour task is to help me improve my essay to be more logical. You MUST ensure that your answer is unbiased and does not rely on stereotypes. Think step by step and use simple English like you're explaining something to a 5-year-old. You will be penalized if the improvement suggestions are not logical.\n\n###Example###\nOriginal sentence: 'The quick brown fox jumps over the lazy dog.'\nImproved sentence: 'The agile brown fox leaps over the lethargic dog.'\n\n###Question###\nHelp me improve my essay to be more logical. Essay: {essay}"
-}
+}"
 
+MAKE SURE THAT YOUR ANSWER IS A VALID JSON FILE.
 Take a deep breath and work on this problem step-by-step.`;
 
 async function suggestImprovement(
@@ -59,12 +60,18 @@ async function suggestImprovement(
         { role: 'user', content: inputPrompt.normalizedText },
     ];
     console.log(messages);
-    let result = await utils.sendChatRequest(messages, {
-        model: utils.GPTModel.GPT4_Turbo,
-        temperature: 0.3,
-        seed: 42,
-        response_format: { type: 'json_object' },
-    });
+    let result = await utils.sendChatRequest(
+        messages,
+        {
+            model: utils.GPTModel.GPT4_Turbo,
+            temperature: 0.3,
+            seed: 42,
+            response_format: { type: 'json_object' },
+        },
+        undefined,
+        true,
+        true
+    );
 
     try {
         return JSON.parse(result);
