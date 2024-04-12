@@ -51,7 +51,7 @@ async function checkGenderBias(
                 seed: 42,
             },
             undefined,
-            false,
+            true,
             true
         );
         // const response = await client.chat.completions.create({
