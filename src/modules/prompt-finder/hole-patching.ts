@@ -51,8 +51,10 @@ async function _patchValue(
         variableName
     );
     // load source code file contents from file
+    // convert the source code file path to a  uri
+    const sourceCodeFilePath = vscode.Uri.file(prompt.sourceFilePath);
     const sourceCodeFileContents = fs.readFileSync(
-        prompt.sourceFilePath,
+        sourceCodeFilePath.fsPath,
         'utf8'
     );
 
@@ -65,7 +67,11 @@ async function _patchValue(
     let readmeFilePath = findReadmeFile(prompt.sourceFilePath);
     let readmeFileContents = '';
     if (readmeFilePath) {
-        readmeFileContents = await fs.promises.readFile(readmeFilePath, 'utf8');
+        const readmeFilePathURI = vscode.Uri.file(readmeFilePath);
+        readmeFileContents = await fs.promises.readFile(
+            readmeFilePathURI.fsPath,
+            'utf8'
+        );
         // inject readme file contents into the prompt
         userPromptToSend +=
             '\n You may use the following README.md file contents to help you better understand the context of this prompt: "\n' +
