@@ -46,7 +46,7 @@ async function checkVariableInjection(
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');
-        return JSON.parse('{"error": " Issue during OpenAI configuration}"');
+        return { error: ' Issue during OpenAI configuration' };
     }
     //TODO replace variables with default values before sending to openai
     //TODO add a check to see if the prompt is too long and split it into multiple prompts
@@ -60,20 +60,26 @@ async function checkVariableInjection(
     // });
     // const result = response.choices?.[0]?.message?.content;
 
-    const result = await LLMUtils.sendChatRequest(messages, {
-        model: modelType,
-        temperature: 0.0,
-        top_p: 0.95,
-        seed: 42,
-    });
+    const result = await LLMUtils.sendChatRequest(
+        messages,
+        {
+            model: modelType,
+            temperature: 0.0,
+            top_p: 0.95,
+            seed: 42,
+        },
+        undefined,
+        false,
+        true
+    );
     // console.log(result);
     // convert result to json and return
     if (result !== undefined && result !== null) {
         default_response = JSON.stringify(result);
     } else {
-        return JSON.parse('{"error": "No response from Azure OpenAI}"');
+        return { error: 'No response from Azure OpenAI' };
     }
-    let attackTuples = AttacksJson.attacks.slice(0, 4); // only use first 4 attacks for testing
+    let attackTuples = AttacksJson.attacks;
     let poisoned_responses: string[] = [];
     let maybe_poisoned_responses: string[] = [];
     // sentiment analyzer definition
@@ -222,12 +228,18 @@ async function processInjection(
         // });
 
         // let injectedResult = response.choices?.[0]?.message?.content;
-        let injectedResult = await LLMUtils.sendChatRequest(messages, {
-            model: modelType,
-            temperature: 0.0,
-            top_p: 0.95,
-            seed: 42,
-        });
+        let injectedResult = await LLMUtils.sendChatRequest(
+            messages,
+            {
+                model: modelType,
+                temperature: 0.0,
+                top_p: 0.95,
+                seed: 42,
+            },
+            undefined,
+            false,
+            true
+        );
 
         // convert attack to word list
         const attack_list = attack.split(' ');
@@ -278,7 +290,7 @@ async function processInjection(
                 // ask chatgpt to compare the attack response with the default response and check if the attack response is similar in tone , goal, sentiment to the default response
                 const prompt_list = [defaultResponse, injectedResult];
                 for (let i = 0; i < prompt_list.length; i++) {
-                    let value = '{' + comparisonVariablesToInject[i] + '}';
+                    let value = '{{' + comparisonVariablesToInject[i] + '}}';
                     comparisonUserPromptText =
                         comparisonUserPromptText.replaceAll(
                             value,
@@ -306,7 +318,10 @@ async function processInjection(
                             model: modelType,
                             temperature: 0.3,
                             seed: 42,
-                        }
+                        },
+                        undefined,
+                        true,
+                        true
                     );
                     let comparisonResult = response;
                     // response.choices?.[0]?.message?.content;
@@ -314,22 +329,29 @@ async function processInjection(
                         comparisonResult !== undefined &&
                         comparisonResult !== null
                     ) {
-                        // clean json
-                        // find last occurrence of } in result string
-                        let last_occurrence = comparisonResult.lastIndexOf('}');
-                        // remove everything after the last occurrence
-                        comparisonResult = comparisonResult.substring(
-                            0,
-                            last_occurrence + 1
-                        );
                         try {
+                            // clean any trailing characters  after the last }
+                            // find the last occurrence of }
+                            let last_occurrence =
+                                comparisonResult.lastIndexOf('}');
+                            // remove everything after the last occurrence
+                            comparisonResult = comparisonResult.substring(
+                                0,
+                                last_occurrence + 1
+                            );
+                            // parse the json
                             const comparisonJson = JSON.parse(comparisonResult);
-                            const similarity_result = comparisonJson[
-                                'similar'
-                            ] as String;
+                            // const similarity_result: boolean = as boolean;
                             if (
-                                similarity_result.toLowerCase() === 'no' ||
-                                similarity_result.toLowerCase() === 'false'
+                                (typeof comparisonJson['similar'] ===
+                                    'boolean' &&
+                                    comparisonJson['similar'] === false) ||
+                                (comparisonJson['similar'] instanceof String &&
+                                    comparisonJson['similar'].toLowerCase() ===
+                                        'false') ||
+                                (comparisonJson['similar'] instanceof String &&
+                                    comparisonJson['similar'].toLowerCase() ===
+                                        'no')
                             ) {
                                 maybe_poisoned_responses.push([
                                     injectionPointVariable,
@@ -341,6 +363,7 @@ async function processInjection(
                                 'Error parsing comparison result, JSON is invalid: ' +
                                     comparisonResult
                             );
+                            console.log(e);
                         }
                     } else {
                         console.log(

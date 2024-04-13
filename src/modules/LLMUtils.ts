@@ -1,18 +1,53 @@
 import OpenAI from 'openai';
 import fs from 'fs';
 import * as vscode from 'vscode';
-
+import prettier from 'prettier';
 // load the config json
 import config from './config.json';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { createExponetialDelay, retryAsync, waitUntilAsync } from 'ts-retry';
 
 // define interface for the config json file
 
-export enum GPTModel {
-    GPT3_5Turbo,
-    GPT4,
-    GPT4_5Turbo,
+async function retryExponential<T>(
+    fn: () => Promise<T>,
+    maxTry: number = 10,
+    maxTimeout: number = 600000
+): Promise<T> {
+    const delay = createExponetialDelay(3000);
+    return await ((await waitUntilAsync(async () => {
+        return await retryAsync(fn, {
+            maxTry,
+            delay,
+            onError: (error: Error) => {
+                console.error(`Error on re/try:"${error.message}" Retrying...`);
+            },
+            onMaxRetryFunc: (error: Error) => {
+                {
+                    console.error(
+                        `Max Retries reached, error:" ${error.message}"`
+                    );
+                }
+            },
+        });
+    }, maxTimeout)) as Promise<T>);
 }
+
+export const GPTModel = {
+    GPT3_5Turbo: {
+        OpenAI: 'gpt-3.5-turbo',
+        Azure: 'gpt-35-turbo',
+        Copilot: 'copilot-gpt-3.5-turbo',
+    },
+    GPT4: { OpenAI: 'gpt-4', Azure: 'gpt-4', Copilot: 'copilot-gpt-4' },
+    GPT4_Turbo: {
+        OpenAI: 'gpt-4-turbo-preview',
+        Azure: 'gpt-4-turbo-preview',
+        Copilot: 'copilot-gpt-3.5-turbo',
+    },
+} as const;
+
+export type GPTModel = (typeof GPTModel)[keyof typeof GPTModel];
 
 interface configJson {
     LLM_Backend: string;
@@ -81,7 +116,7 @@ export function getClient() {
     }
 }
 
-function getAzureClient() {
+function getAzureClient(): OpenAI | undefined {
     let endpoint: string | undefined;
     let credential: string | undefined;
     if (process.env.AZURE_OPENAI_ENDPOINT) {
@@ -113,106 +148,225 @@ function getAzureClient() {
     return client;
 }
 
-function getOpenAIClient() {
-    throw new Error('Function not implemented.');
+function getOpenAIClient(): OpenAI {
+    return new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? getAPIKey() });
+}
+
+export async function sendChatRequestAndGetDirectResponse(
+    organizedMessages: ChatCompletionMessageParam[],
+    LLMOptions?: { [name: string]: any },
+    cancellationToken?: vscode.CancellationToken
+): Promise<string | OpenAI.Chat.ChatCompletion | undefined> {
+    let client = getClient();
+    if (client === undefined || client === null) {
+        console.error('Client is undefined');
+        return '{"error": "Issue during LLM Backend configuration"}';
+    }
+
+    const filteredOptions: [string, any][] = LLMOptions
+        ? Object.entries(LLMOptions).filter(([key, value]) => {
+              return key !== 'model' && key !== 'temperature' && key !== 'seed';
+          })
+        : [];
+    const otherOptions: Record<string, any> =
+        Object.fromEntries(filteredOptions);
+
+    // if backend is Azure or OpenAI
+    if (client instanceof OpenAI) {
+        const response = await retryExponential(async () => {
+            if (client && client instanceof OpenAI) {
+                return await client.chat.completions.create({
+                    messages: organizedMessages,
+                    model: LLMOptions?.model[config.LLM_Backend],
+                    temperature: (LLMOptions?.temperature as number) ?? 0.3,
+                    seed: (LLMOptions?.seed as number) ?? 42,
+                    // transform remaining LLMOptions into parameter value pairs
+                    ...otherOptions,
+                });
+            }
+        });
+        return response;
+    } else {
+        let convertedMessages: vscode.LanguageModelChatMessage[] = [];
+        organizedMessages.forEach((message) => {
+            if (message.role === 'system') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatSystemMessage(message.content)
+                );
+            } else if (message.role === 'user') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatUserMessage(
+                        message.content as string
+                    )
+                );
+            } else if (message.role === 'assistant') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatAssistantMessage(
+                        message.content as string
+                    )
+                );
+            } else {
+                console.error('Invalid message role - skipping message');
+            }
+        });
+
+        if (LLMOptions?.model === GPTModel.GPT4_Turbo) {
+            // TODO: Does this not exist?
+            // model = 'copilot-gpt-4-turbo';
+            console.warn(
+                'Copilot GPT4Turbo does not exist. Using GPT3.5 turbo instead.'
+            );
+        }
+
+        const copyOfLLMOptions = { ...LLMOptions };
+        delete copyOfLLMOptions.model;
+        const result = await retryExponential(async () => {
+            if (client && 'sendChatRequest' in client) {
+                return await client.sendChatRequest(
+                    LLMOptions?.model.Copilot ?? 'copilot-gpt-3.5-turbo',
+                    convertedMessages,
+                    {
+                        modelOptions: copyOfLLMOptions,
+                    },
+                    cancellationToken ||
+                        new vscode.CancellationTokenSource().token
+                );
+            }
+        });
+        let completeResult = '';
+        if (result !== null && result !== undefined) {
+            for await (const fragment of result.stream) {
+                completeResult += fragment;
+            }
+        }
+        if (completeResult !== '') {
+            if (completeResult.startsWith('I am sorry')) {
+                console.error(
+                    'LLM failed to generate an appropriate response, and I am sorry was returned'
+                );
+                return (
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
+                    completeResult +
+                    '"}'
+                );
+            }
+            return completeResult;
+        } else {
+            console.error('No response from LLM');
+            return (
+                '{"error": "No response from"' +
+                configuration.LLM_Backend +
+                ' "LLM"}'
+            );
+        }
+    }
 }
 
 export async function sendChatRequest(
     organizedMessages: ChatCompletionMessageParam[],
     LLMOptions?: { [name: string]: any },
     cancellationToken?: vscode.CancellationToken,
-    getDirectResponse?: boolean
-) {
+    cleanJsonOutput?: boolean,
+    addFailureMessage?: boolean
+): Promise<string> {
     let client = getClient();
-    if (client === undefined) {
+    if (client === undefined || client === null) {
         console.error('Client is undefined');
-        return JSON.parse(
-            '{"error": " Issue during LLM Backend configuration"}'
-        );
-    } else {
-        const filteredOptions: [string, any][] = LLMOptions
-            ? Object.entries(LLMOptions).filter(([key, value]) => {
-                  return (
-                      key !== 'model' && key !== 'temperature' && key !== 'seed'
-                  );
-              })
-            : [];
-        const otherOptions: Record<string, any> =
-            Object.fromEntries(filteredOptions);
-        // if backend is Azure or OpenAI
-        if (client instanceof OpenAI) {
-            let model: string | undefined = undefined;
-            if (LLMOptions?.model === GPTModel.GPT4) {
-                model = 'gpt-4';
-            } else if (LLMOptions?.model === GPTModel.GPT3_5Turbo) {
-                model = 'gpt-35-turbo';
+        return '{"error": "Issue during LLM Backend configuration"}';
+    }
+
+    if (addFailureMessage) {
+        organizedMessages.push({
+            role: 'user',
+            content:
+                'If you encounter any problems fulfilling this request, please start your response with " I am sorry "',
+        });
+    }
+    let response = await sendChatRequestAndGetDirectResponse(
+        organizedMessages,
+        LLMOptions,
+        cancellationToken
+    );
+
+    if (client instanceof OpenAI) {
+        response = response as OpenAI.Chat.ChatCompletion;
+        let result = null;
+        if (response) {
+            result = response.choices?.[0]?.message?.content;
+        }
+        if (result !== null) {
+            if (result.startsWith('I am sorry')) {
+                // console.error(
+                // 'LLM failed to generate an appropriate response, and I am sorry was returned'
+                // );
+                return (
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
+                    result +
+                    '"}'
+                );
             }
-            const response = await client.chat.completions.create({
-                messages: organizedMessages,
-                model: model || 'gpt-35-turbo',
-                temperature: (LLMOptions?.temperature as number) || 0.3,
-                seed: (LLMOptions?.seed as number) || 42,
-                // transform remaining LLMOptions into parameter value pairs
-                ...otherOptions,
-            });
-            if (getDirectResponse) {
-                return response;
-            } else {
-                const result = response.choices?.[0]?.message?.content;
-                if (result !== undefined && result !== null) {
-                    return result;
-                } else {
-                    console.error('No response from LLM');
-                    return '{"error": "No response from Azure OpenAI}"';
-                }
+            if (cleanJsonOutput) {
+                // resolve issue with trailing output
+                // find last occurrence of } in result string
+                result = cleanJson(result);
             }
+            return result;
         } else {
-            let convertedMessages: vscode.LanguageModelChatMessage[] = [];
-            organizedMessages.forEach((message) => {
-                if (message.role === 'system') {
-                    convertedMessages.push(
-                        new vscode.LanguageModelChatSystemMessage(
-                            message.content
-                        )
-                    );
-                } else if (message.role === 'user') {
-                    convertedMessages.push(
-                        new vscode.LanguageModelChatUserMessage(
-                            message.content as string
-                        )
-                    );
-                } else if (message.role === 'assistant') {
-                    convertedMessages.push(
-                        new vscode.LanguageModelChatAssistantMessage(
-                            message.content as string
-                        )
-                    );
-                } else {
-                    console.error('Invalid message role - skipping message');
-                }
-            });
-            let model: string | undefined = undefined;
-            if (LLMOptions?.model === GPTModel.GPT4) {
-                model = 'copilot-gpt-4';
-            } else if (LLMOptions?.model === GPTModel.GPT3_5Turbo) {
-                model = 'copilot-gpt-3.5-turbo';
-            }
-            const copyOfLLMOptions = { ...LLMOptions };
-            delete copyOfLLMOptions.model;
-            const result = await client.sendChatRequest(
-                model || 'copilot-gpt-3.5-turbo',
-                convertedMessages,
-                {
-                    modelOptions: copyOfLLMOptions,
-                },
-                cancellationToken || new vscode.CancellationTokenSource().token
+            console.error('No response from LLM');
+            return (
+                '{"error": "No response from"' +
+                configuration.LLM_Backend +
+                ' "LLM"}'
             );
-            let completeResult = '';
-            for await (const fragment of result.stream) {
-                completeResult += fragment;
+        }
+    } else {
+        response = response as string;
+        let completeResult: string = '';
+        if (response !== null && response !== undefined) {
+            completeResult = response;
+        }
+        if (completeResult !== '') {
+            if (completeResult.startsWith('I am sorry')) {
+                console.error(
+                    'LLM failed to generate an appropriate response, and I am sorry was returned'
+                );
+                return (
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
+                    completeResult +
+                    '"}'
+                );
+            }
+            if (cleanJsonOutput) {
+                // resolve issue with trailing output
+                // find last occurrence of } in result string
+                completeResult = cleanJson(completeResult);
             }
             return completeResult;
+        } else {
+            console.error('No response from LLM');
+            return (
+                '{"error": "No response from"' +
+                configuration.LLM_Backend +
+                ' "LLM"}'
+            );
         }
     }
+}
+
+export function cleanJson(result: any) {
+    let last_occurrence = result.lastIndexOf('}');
+    // remove everything after the last occurrence
+    result = result.substring(0, last_occurrence + 1);
+    // remove any new lines
+    result = result.replace(/(\r\n|\n|\r)/gm, '');
+    // format the JSON
+    try {
+        result = prettier.format(result, { parser: 'json' });
+    } catch (e) {
+        console.error('Error formatting JSON');
+        console.log(e);
+        console.log(result);
+    }
+    return result;
 }
 // TODO - Add more utility functions here

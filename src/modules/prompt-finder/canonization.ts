@@ -19,7 +19,8 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
     );
     const [finalResponse, templateHoles] = await canonizeWithLLM(
         sourceFile,
-        node
+        node,
+        normalizedResponse
     );
     return [finalResponse, templateHoles];
 }
@@ -55,6 +56,7 @@ You task is to read this and convert it into a normalized string form.
 3. Produce as output a single string where any template holes have been normalized to a placeholder like {{variable}}.
 4. Any variable that can't be resolved should be converted to a placeholder like {{variable}}.
 5. Output only the normalized string, nothing else.
+6. If you encounter any problems fulfilling a request, you will start your response with \" I am sorry \"
             `.trim(),
         },
         {
@@ -92,11 +94,17 @@ Here is the normalized string:
         },
     ];
 
-    const normalizedResponse = await sendChatRequest(messages, {
-        temperature: 0.0,
-        stop: ['```'],
-        model: GPTModel.GPT3_5Turbo,
-    });
+    const normalizedResponse = await sendChatRequest(
+        messages,
+        {
+            temperature: 0.0,
+            stop: ['```'],
+            model: GPTModel.GPT3_5Turbo,
+        },
+        undefined,
+        false,
+        false
+    );
 
     console.log(normalizedResponse);
 
