@@ -27,8 +27,9 @@ const PROMPT_SAVE_FOR_ANALYSIS = 'prompter.savePrompt';
 export class PrompterParticipant {
     private static readonly ID = 'prompter';
     private extensionUri: vscode.Uri | undefined;
-    private SavedPrompt: PromptMetadata | undefined = undefined;
-
+    private savedPrompt: PromptMetadata | undefined = undefined;
+    private systemPromptIndex: number | undefined = 0;
+    private customSystemPrompt: string | undefined = undefined;
     activate(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
 
@@ -74,6 +75,11 @@ export class PrompterParticipant {
                         label: "Parse and show a prompt's internal representation and its associated generated default values",
                     },
                     {
+                        prompt: 'select-system-prompt',
+                        command: 'select-system-prompt',
+                        label: 'Select a system prompt to use for the different analyses on the saved prompt',
+                    },
+                    {
                         prompt: 'analyze-bias',
                         command: 'analyze-bias',
                         label: 'Analyze bias for a selected prompt',
@@ -105,7 +111,8 @@ export class PrompterParticipant {
                 (args: PromptMetadata) => {
                     // const text = args;
                     // copy the prompt to an internal variable
-                    this.SavedPrompt = args;
+                    this.savedPrompt = args;
+                    this.systemPromptIndex = undefined; // reset the system prompt index
                     // show a message to the user
                     vscode.window.showInformationMessage(
                         'Prompt saved for analysis, You can now call other commands to analyze the prompt.'
@@ -132,6 +139,15 @@ export class PrompterParticipant {
             case 'parse-prompt': {
                 await this._handleParsePrompt(request, context, stream, token);
                 return { metadata: { command: 'parse-prompt' } };
+            }
+            case 'select-system-prompt': {
+                await this._handleSelectSystemPrompt(
+                    request,
+                    context,
+                    stream,
+                    token
+                );
+                return { metadata: { command: 'select-system-prompt' } };
             }
             case 'analyze-injection-vulnerability': {
                 await this._handleInjectionVulnerability(
@@ -167,6 +183,62 @@ export class PrompterParticipant {
                 return { metadata: { command: '' } };
             }
         }
+    }
+    private _handleSelectSystemPrompt(
+        request: vscode.ChatRequest,
+        context: vscode.ChatContext,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken
+    ) {
+        if (request.prompt === '') {
+            stream.markdown(
+                'This module will select the system prompt to use when analyzing the saved prompt via the index passed. The system prompt is used for the different analyses on the saved prompt. If no system prompt is selected, the first system prompt is used by default.'
+            );
+            stream.markdown('\n\n');
+            stream.markdown(
+                'Selected System prompt indexes are reset when a new prompt is selected via the Save Prompt button.'
+            );
+            stream.markdown('\n\n');
+            stream.markdown(
+                'Custom System Prompt: If you want to use a custom system prompt, pass the text of the custom system prompt as the prompt to this command. The custom system prompt will be used for the different analyses for any prompt ( saved or specified via text-selection).'
+            );
+            stream.markdown('\n\n');
+            stream.markdown(
+                ' Custom system prompts take precedence over System prompt selected via index. They are only reset when a "reset" message is send to select-system-prompt.'
+            );
+            stream.markdown('\n\n');
+        }
+
+        // check if prompt is a number
+        // convert prompt to number
+        const prompt = request.prompt;
+        const promptNumber = parseInt(prompt);
+        if (isNaN(promptNumber)) {
+            if (prompt === 'reset') {
+                stream.markdown('Custom System prompt is reset');
+                this.customSystemPrompt = undefined;
+                return { metadata: { command: 'select-system-prompt' } };
+            }
+            // if prompt is not a number, use it as a system prompt
+            stream.markdown('Using the text passed as a system prompt');
+            this.customSystemPrompt = prompt;
+        } else {
+            // if prompt is a number, use it as an index
+            if (
+                promptNumber < 1 ||
+                (this.savedPrompt?.associatedSystemPrompts !== undefined &&
+                    promptNumber >
+                        this.savedPrompt?.associatedSystemPrompts?.length + 1)
+            ) {
+                stream.markdown(
+                    'Index out of range, make sure the index is within the range of the system prompts'
+                );
+                stream.markdown('\n\n');
+            } else {
+                this.systemPromptIndex = promptNumber - 1;
+            }
+        }
+        return { metadata: { command: 'select-system-prompt' } };
     }
     private async _handleParsePrompt(
         request: vscode.ChatRequest,
@@ -222,39 +294,94 @@ export class PrompterParticipant {
                 }
             }
         }
-        if (!tempPrompt && this.SavedPrompt) {
+        if (!tempPrompt && this.savedPrompt) {
             stream.markdown('Parsing saved prompt for analysis...');
             stream.markdown('\n\n');
-            tempPrompt = this.SavedPrompt;
+            tempPrompt = this.savedPrompt;
         }
         stream.markdown(' **📝 Normalized Prompt Text:** ');
         stream.markdown(`${tempPrompt?.normalizedText}`);
         stream.markdown('\n\n');
+        // show system prompts if they exist
+        if (tempPrompt?.associatedSystemPrompts) {
+            if (tempPrompt?.associatedSystemPrompts.length === 1) {
+                stream.markdown('**📝  System Prompt:**');
+                stream.markdown('\n\n');
+                stream.markdown(`${tempPrompt?.associatedSystemPrompts[0]}`);
+                stream.markdown('\n\n');
+            } else {
+                if (
+                    this.customSystemPrompt === undefined &&
+                    this.systemPromptIndex === undefined
+                ) {
+                    stream.markdown('**📝 Possible System Prompts:**');
+                    stream.markdown('\n\n');
+                    for (
+                        let j = 0;
+                        j < tempPrompt?.associatedSystemPrompts.length;
+                        j++
+                    ) {
+                        stream.markdown(
+                            `${j + 1} - ${tempPrompt?.associatedSystemPrompts[j].normalizedText}`
+                        );
+                        stream.markdown('\n\n');
+                    }
+                    stream.markdown('\n\n');
+                    stream.markdown(
+                        'By default, the first system prompt is used for the different analyses. To select which of the system prompts you want to use, call the set-system-prompt command with the index of the system prompt you want to use. You can also pass a custom prompt to the same command.'
+                    );
+                    stream.markdown('\n\n');
+                } else {
+                    if (this.customSystemPrompt !== undefined) {
+                        stream.markdown('**📝 Custom System Prompt Defined:**');
+                        stream.markdown('\n\n');
+                        stream.markdown(`${this.customSystemPrompt}`);
+                        stream.markdown('\n\n');
+                    } else {
+                        stream.markdown('**📝 System Prompt Selected:**');
+                        stream.markdown('\n\n');
+                        stream.markdown(
+                            `${tempPrompt?.associatedSystemPrompts[this.systemPromptIndex!].normalizedText}`
+                        );
+                        stream.markdown('\n\n');
+                    }
+                }
+            }
+        }
+        if (this.customSystemPrompt !== undefined) {
+            stream.markdown('**📝 Custom System Prompt Defined:**');
+            stream.markdown('\n\n');
+            stream.markdown(`${this.customSystemPrompt}`);
+            stream.markdown('\n\n');
+        }
+
         // if some default values in the template values  are undefined or empty, show a message and attempt to fill holes
-        let hasEmptyValues = false;
-        for (let key in tempPrompt?.templateValues) {
-            if (!tempPrompt?.templateValues[key].defaultValue) {
-                hasEmptyValues = true;
-                break;
+        if (tempPrompt && Object.keys(tempPrompt.templateValues).length > 0) {
+            let hasEmptyValues = false;
+            for (let key in tempPrompt?.templateValues) {
+                if (!tempPrompt?.templateValues[key].defaultValue) {
+                    hasEmptyValues = true;
+                    break;
+                }
             }
-        }
-        if (hasEmptyValues) {
-            stream.markdown(
-                'Some default values in the template values are empty or undefined, attempting to generate default values...'
-            );
-            stream.markdown('\n\n');
-            await patchHoles(tempPrompt!);
-        }
-        stream.markdown('**📝 Template Values:**');
-        stream.markdown('\n\n');
-        for (let key in tempPrompt?.templateValues) {
-            let value = tempPrompt?.templateValues[key].defaultValue;
-            if (!value) {
-                value = '**No default value was generated**';
+            if (hasEmptyValues) {
+                stream.markdown(
+                    'Some default values in the template values are empty or undefined, attempting to generate default values...'
+                );
+                stream.markdown('\n\n');
+                await patchHoles(tempPrompt!);
             }
-            stream.markdown(`**${key}** : `);
-            stream.markdown(`${value}`);
+            stream.markdown('**📝 Template Values:**');
             stream.markdown('\n\n');
+            for (let key in tempPrompt?.templateValues) {
+                let value = tempPrompt?.templateValues[key].defaultValue;
+                if (!value) {
+                    value = '**No default value was generated**';
+                }
+                stream.markdown(`**${key}** : `);
+                stream.markdown(`${value}`);
+                stream.markdown('\n\n');
+            }
         }
 
         return { metadata: { command: 'parse-prompt' } };
@@ -322,11 +449,11 @@ export class PrompterParticipant {
                 };
             }
         }
-        if (this.SavedPrompt) {
+        if (this.savedPrompt) {
             stream.markdown('Analyzing prompt saved for analysis...');
 
             const biasAnalysis = await checkVariableInjection(
-                this.SavedPrompt!
+                this.savedPrompt!
             );
             // Render the results
             stream.markdown('**🎯 Injection Vulnerability Analysis Results**:');
@@ -419,11 +546,31 @@ export class PrompterParticipant {
             const doc = await vscode.workspace.openTextDocument(file);
             const text = doc.getText();
 
+            // Check if the file contains any of the common imports
             if (text.includes('import openai')) {
                 filesWithPrompts.push({ path: file.path, contents: text });
             } else if (text.includes('from openai import')) {
                 filesWithPrompts.push({ path: file.path, contents: text });
+            } else if (text.includes('from anthropic import Anthropic')) {
+                filesWithPrompts.push({ path: file.path, contents: text });
+            } else if (text.includes('import anthropic')) {
+                filesWithPrompts.push({ path: file.path, contents: text });
+            } else if (text.includes('import cohere')) {
+                filesWithPrompts.push({ path: file.path, contents: text });
             }
+            //check with regex if file contains any of the common variable names
+            else if (
+                text.match(
+                    /[Pp][Rr][Oo][Mm][Pp][Tt]|[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee]/
+                )
+            ) {
+                filesWithPrompts.push({ path: file.path, contents: text });
+            } else if (text.match(/Template|Message/)) {
+                filesWithPrompts.push({ path: file.path, contents: text });
+            } else if (text.match(/content|message/)) {
+                filesWithPrompts.push({ path: file.path, contents: text });
+            }
+
             // TODO: other ways to import openai or other common LLM libraries?
         }
 
@@ -535,7 +682,7 @@ export class PrompterParticipant {
                 }
             }
         }
-        const prompt = this.SavedPrompt;
+        const prompt = this.savedPrompt;
         if (prompt !== undefined) {
             stream.markdown('Analyzing prompt saved for analysis...');
             const biasAnalysis = await checkGenderBias(prompt);
@@ -771,7 +918,7 @@ export class PrompterParticipant {
 
     async _getPrompt(stream: vscode.ChatResponseStream) {
         const editor = vscode.window.activeTextEditor;
-        let prompt = this.SavedPrompt;
+        let prompt = this.savedPrompt;
 
         const selectedText = editor?.document.getText(editor.selection);
         if (selectedText) {

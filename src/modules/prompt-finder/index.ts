@@ -45,6 +45,8 @@ export type PromptMetadata = {
     };
     sourceFilePath: string;
     // promptNode?: Parser.SyntaxNode;
+    isSystemPrompt?: boolean;
+    associatedSystemPrompts?: [PromptMetadata];
 };
 
 // This module defines a function, findPrompts, that takes
@@ -83,13 +85,13 @@ export const findPrompts = async (
                 const tree = parser.parse(file.contents);
                 let results: PromptMetadata[] = [];
 
-                results = results.concat(
-                    await _findOpenAICompletionCreate(
-                        file.path,
-                        tree,
-                        pythonGrammar
-                    )
-                );
+                // results = results.concat(
+                //     await _findOpenAICompletionCreate(
+                //         file.path,
+                //         tree,
+                //         pythonGrammar
+                //     )
+                // );
                 results = results.concat(
                     await _findOpenAIChatCalls(file.path, tree, pythonGrammar)
                 );
@@ -112,6 +114,30 @@ export const findPrompts = async (
                 results = results.concat(
                     await _findMessageDictionary(file.path, tree, pythonGrammar)
                 );
+                // find all the prompts that are system prompts
+                // and associate them with the prompts that are not system prompts
+                const systemPrompts = results.filter(
+                    (prompt) => prompt.isSystemPrompt
+                );
+                const nonSystemPrompts = results.filter(
+                    (prompt) => !prompt.isSystemPrompt
+                );
+                for (const nonSystemPrompt of nonSystemPrompts) {
+                    for (const systemPrompt of systemPrompts) {
+                        if (
+                            nonSystemPrompt.associatedSystemPrompts ===
+                            undefined
+                        ) {
+                            nonSystemPrompt.associatedSystemPrompts = [
+                                systemPrompt,
+                            ];
+                        } else {
+                            nonSystemPrompt.associatedSystemPrompts.push(
+                                systemPrompt
+                            );
+                        }
+                    }
+                }
 
                 return results;
             } catch (e) {
@@ -555,6 +581,24 @@ const _createPromptMetadata = async (
 
     // Grab some meta on the parent call
     promptMeta.rawTextOfParentCall = everything.node.text;
+
+    //extract the role
+    if (promptMeta.rawTextOfParentCall.includes('"role":')) {
+        let role: String = promptMeta.rawTextOfParentCall
+            .split('"role":')[1]
+            ?.split('"')[1];
+        if (role.toLowerCase() === 'system') {
+            promptMeta.isSystemPrompt = true;
+        }
+    } else if (promptMeta.rawTextOfParentCall.includes("'role':")) {
+        let role: String = promptMeta.rawTextOfParentCall
+            .split("'role':")[1]
+            ?.split("'")[1];
+        if (role.toLowerCase() === 'system') {
+            promptMeta.isSystemPrompt = true;
+        }
+    }
+
     promptMeta.parentCallStartLocation = toVSCodePosition(
         everything.node.startPosition
     );

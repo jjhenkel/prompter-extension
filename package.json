@@ -41,6 +41,10 @@
                         "description": "Analyze injection vulnerability of a selected prompt"
                     },
                     {
+                        "name": "select-system-prompt",
+                        "description": "Select or define a system prompt for Prompt Analysis tasks"
+                    },
+                    {
                         "name": "suggest-by-rules",
                         "description": "Suggest improvements for a prompt based on OpenAI rules"
                     },
