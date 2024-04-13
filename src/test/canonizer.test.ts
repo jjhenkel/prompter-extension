@@ -146,7 +146,7 @@ suite('Canonization Test Suite', () => {
     test('2 Value Canonization Test', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
-            'src/test/Canonization Python Test Files/canonization-2values-test.py'
+            'src/test/Canonization Test Samples/canonization-2values-test.py'
         ).fsPath;
         const contents = readFileSync(path, 'utf8');
         let results = await findPrompts(extensionUri, [
