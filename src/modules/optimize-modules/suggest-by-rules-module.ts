@@ -57,16 +57,22 @@ async function suggestImprovement(
 ): Promise<JSONSchemaObject> {
     const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPromptText },
-        { role: 'user', content: inputPrompt.normalizedText },
+        {
+            role: 'user',
+            content:
+                'Help me improve this prompt: `' +
+                inputPrompt.normalizedText +
+                '`',
+        },
     ];
     console.log(messages);
     let result = await utils.sendChatRequest(
         messages,
         {
-            model: utils.GPTModel.GPT4_Turbo,
+            model: utils.GPTModel.GPT3_5Turbo,
             temperature: 0.3,
             seed: 42,
-            response_format: { type: 'json_object' },
+            // response_format: { type: 'json_object' },
         },
         undefined,
         true,
@@ -77,6 +83,8 @@ async function suggestImprovement(
         return JSON.parse(result);
     } catch (e) {
         console.log(result);
+        console.log(e);
+        console.log(result.toString()[182]);
         return { error: 'Failed to parse JSON response' };
     }
 }
