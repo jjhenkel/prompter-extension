@@ -23,4 +23,4 @@ async function fixGenderBias(): Promise<JSONSchemaObject> {
     return { error: 'Not yet implemented' };
 }
 
-fixGenderBias();
+// fixGenderBias();
