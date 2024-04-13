@@ -732,7 +732,7 @@ export class PrompterParticipant {
             stream.markdown('\n\n');
             const suggestion = await suggestImprovement(prompt);
             // Render the results
-            stream.markdown('** Suggestion Results**:\n\n');
+            stream.markdown('**Suggestion Results**:\n\n');
             stream.markdown(this.handleSuggestImprovement(suggestion));
         }
         return { metadata: { command: 'suggest-by-rules' } };
