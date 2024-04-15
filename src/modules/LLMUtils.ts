@@ -306,8 +306,6 @@ export async function sendChatRequest(
                 );
             }
             if (cleanJsonOutput) {
-                // resolve issue with trailing output
-                // find last occurrence of } in result string
                 result = cleanJson(result);
             }
             return result;
@@ -337,8 +335,6 @@ export async function sendChatRequest(
                 );
             }
             if (cleanJsonOutput) {
-                // resolve issue with trailing output
-                // find last occurrence of } in result string
                 completeResult = cleanJson(completeResult);
             }
             return completeResult;
@@ -354,6 +350,10 @@ export async function sendChatRequest(
 }
 
 export function cleanJson(result: any) {
+    // find the first occurrence of '{'
+    let first_occurrence = result.indexOf('{');
+    //remove everything before the first occurrence
+    result = result.substring(first_occurrence);
     let last_occurrence = result.lastIndexOf('}');
     // remove everything after the last occurrence
     result = result.substring(0, last_occurrence + 1);
