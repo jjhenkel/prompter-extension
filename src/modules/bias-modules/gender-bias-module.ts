@@ -6,6 +6,8 @@ import PromptJson from './gender_prompt_4.json';
 import { PromptMetadata } from '../prompt-finder/index.js';
 import { patchHoles } from '../prompt-finder/hole-patching.js';
 
+//  json data fields: gender_biased: bool    may_cause_gender_bias: bool      reasoning: string
+
 async function checkGenderBias(
     inputPrompt: PromptMetadata
 ): Promise<JSONSchemaObject> {
@@ -47,12 +49,12 @@ async function checkGenderBias(
             messages,
             {
                 model: utils.GPTModel.GPT3_5Turbo,
-                temperature: 0.3,
+                temperature: 0.1,
                 seed: 42,
             },
             undefined,
             true,
-            true
+            false
         );
         // const response = await client.chat.completions.create({
         //     messages: messages,
@@ -64,8 +66,14 @@ async function checkGenderBias(
         // console.log(result);
         // convert result to json and return
         if (result !== undefined && result !== null) {
-            const result_json = JSON.parse(result);
-            return result_json;
+            try {
+                const result_json = JSON.parse(result);
+                return result_json;
+            } catch (e) {
+                console.error(e);
+                console.error(result);
+                return { error: 'Error parsing JSON response' };
+            }
         } else {
             return { error: 'No response from Azure OpenAI' };
         }

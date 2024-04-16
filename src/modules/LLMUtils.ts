@@ -354,12 +354,23 @@ export async function sendChatRequest(
 }
 
 export function cleanJson(result: any) {
+    // if Answer = find it and remove everything before it
+    let first_occurrence = result.indexOf('=');
+    if (first_occurrence > 0) {
+        result = result.substring(first_occurrence + 1);
+    }
+    // find first occurence of { and remove everything before it
+    first_occurrence = result.indexOf('{');
+    if (first_occurrence > 0) {
+        result = result.substring(first_occurrence);
+    }
     let last_occurrence = result.lastIndexOf('}');
     // remove everything after the last occurrence
     result = result.substring(0, last_occurrence + 1);
     // remove any new lines
     result = result.replace(/(\r\n|\n|\r)/gm, '');
     // format the JSON
+
     try {
         result = prettier.format(result, { parser: 'json' });
     } catch (e) {

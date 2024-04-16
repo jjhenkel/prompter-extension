@@ -5,6 +5,6 @@
       I need help fixing a prompt that is explicitly gender-biased and may cause further gender-biased responses from my AI model. The prompt I need to fix is within <prompt></prompt>. The reasoning why it may caused biased responses is within <reasoning></reasoning>. Please use this reasoning to generate multiple alternative prompts that fix its issues while only performing the smallest alterations needed. YOUR ANSWER MUST ONLY BE A VALID JSON OBJECT containing ONLY the following key "prompts", which should be an array of strings containing the alternative prompts.  DO NOT WRITE ANY TEXT OTHER THAN THE JSON OBJECT.
       <prompt>"{{prompt}}"</prompt>
       <reasoning>{{reasoning}}</reasoning>
-  injected_variables:
+  injectedVariables:
       - prompt
       - reasoning

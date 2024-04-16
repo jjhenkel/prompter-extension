@@ -315,7 +315,12 @@ export function canonizePromptWithTreeSitter(
             }
         }
         // assume the default of joining for other cases (addition, redirection, fstring, etc.).
-        return ['"' + childrenValues?.join('') + '"' || '', templateHoles];
+        let tempStr = childrenValues?.join('');
+        if (tempStr?.endsWith('+"')) {
+            // remove the last concatenation operator
+            tempStr = tempStr.slice(0, -2);
+        }
+        return ['"' + tempStr + '"' || '', templateHoles];
     } catch (e) {
         console.log(e);
         return ['', {}];
