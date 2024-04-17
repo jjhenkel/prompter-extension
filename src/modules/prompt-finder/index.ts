@@ -47,6 +47,7 @@ export type PromptMetadata = {
     // promptNode?: Parser.SyntaxNode;
     isSystemPrompt?: boolean;
     associatedSystemPrompts?: [PromptMetadata];
+    selectedSystemPromptText?: string;
 };
 
 // This module defines a function, findPrompts, that takes
@@ -136,6 +137,14 @@ export const findPrompts = async (
                                 systemPrompt
                             );
                         }
+                    }
+                    if (
+                        nonSystemPrompt.associatedSystemPrompts !== undefined &&
+                        nonSystemPrompt.associatedSystemPrompts.length > 0
+                    ) {
+                        nonSystemPrompt.selectedSystemPromptText =
+                            nonSystemPrompt.selectedSystemPromptText =
+                                nonSystemPrompt.associatedSystemPrompts[0].normalizedText;
                     }
                 }
 
