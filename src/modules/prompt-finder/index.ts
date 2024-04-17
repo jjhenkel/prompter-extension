@@ -44,7 +44,7 @@ export type PromptMetadata = {
         [key: string]: PromptParameter;
     };
     sourceFilePath: string;
-    // promptNode?: Parser.SyntaxNode;
+    promptNode?: Parser.SyntaxNode;
     isSystemPrompt?: boolean;
     associatedSystemPrompts?: [PromptMetadata];
 };
@@ -616,6 +616,7 @@ const _createPromptMetadata = async (
         promptMeta.endLocation.line + 1,
         promptMeta.endLocation.character
     );
+    promptMeta.promptNode = promptNode;
 
     // The template holes and normalized text will be dealt with later
     try {
