@@ -28,7 +28,7 @@ export class PrompterParticipant {
     private static readonly ID = 'prompter';
     private extensionUri: vscode.Uri | undefined;
     private savedPrompt: PromptMetadata | undefined = undefined;
-    private systemPromptIndex: number | undefined = 0;
+    // private systemPromptIndex: number | undefined = 0;
     private customSystemPrompt: string | undefined = undefined;
     activate(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
@@ -112,7 +112,7 @@ export class PrompterParticipant {
                     // const text = args;
                     // copy the prompt to an internal variable
                     this.savedPrompt = args;
-                    this.systemPromptIndex = undefined; // reset the system prompt index
+
                     // show a message to the user
                     vscode.window.showInformationMessage(
                         'Prompt saved for analysis, You can now call other commands to analyze the prompt.'
@@ -217,11 +217,20 @@ export class PrompterParticipant {
             if (prompt === 'reset') {
                 stream.markdown('Custom System prompt is reset');
                 this.customSystemPrompt = undefined;
+                if (this.savedPrompt !== undefined) {
+                    this.savedPrompt.selectedSystemPromptText =
+                        this.savedPrompt.associatedSystemPrompts?.at(0)
+                            ?.normalizedText || undefined;
+                }
                 return { metadata: { command: 'select-system-prompt' } };
             }
             // if prompt is not a number, use it as a system prompt
             stream.markdown('Using the text passed as a system prompt');
             this.customSystemPrompt = prompt;
+            if (this.savedPrompt !== undefined) {
+                this.savedPrompt.selectedSystemPromptText =
+                    this.customSystemPrompt;
+            }
         } else {
             // if prompt is a number, use it as an index
             if (
@@ -235,7 +244,12 @@ export class PrompterParticipant {
                 );
                 stream.markdown('\n\n');
             } else {
-                this.systemPromptIndex = promptNumber - 1;
+                if (this.savedPrompt !== undefined) {
+                    this.savedPrompt.selectedSystemPromptText =
+                        this.savedPrompt.associatedSystemPrompts?.at(
+                            promptNumber - 1
+                        )?.normalizedText || undefined;
+                }
             }
         }
         return { metadata: { command: 'select-system-prompt' } };
@@ -310,11 +324,8 @@ export class PrompterParticipant {
                 stream.markdown(`${tempPrompt?.associatedSystemPrompts[0]}`);
                 stream.markdown('\n\n');
             } else {
-                if (
-                    this.customSystemPrompt === undefined &&
-                    this.systemPromptIndex === undefined
-                ) {
-                    stream.markdown('**📝 Possible System Prompts:**');
+                if (this.customSystemPrompt === undefined) {
+                    stream.markdown('**📝 Associated System Prompts:**');
                     stream.markdown('\n\n');
                     for (
                         let j = 0;
@@ -328,21 +339,24 @@ export class PrompterParticipant {
                     }
                     stream.markdown('\n\n');
                     stream.markdown(
-                        'By default, the first system prompt is used for the different analyses. To select which of the system prompts you want to use, call the set-system-prompt command with the index of the system prompt you want to use. You can also pass a custom prompt to the same command.'
+                        'By default, the first system prompt is select for the different analyses. To change this, call the set-system-prompt command with the index of the system prompt you want to use. You can also pass a custom system  prompt to the same command.'
                     );
                     stream.markdown('\n\n');
+                    if (this.savedPrompt?.selectedSystemPromptText) {
+                        stream.markdown(
+                            '**📝 System Prompt Currently Selected:**'
+                        );
+                        stream.markdown('\n\n');
+                        stream.markdown(
+                            `${tempPrompt?.selectedSystemPromptText}`
+                        );
+                        stream.markdown('\n\n');
+                    }
                 } else {
                     if (this.customSystemPrompt !== undefined) {
                         stream.markdown('**📝 Custom System Prompt Defined:**');
                         stream.markdown('\n\n');
                         stream.markdown(`${this.customSystemPrompt}`);
-                        stream.markdown('\n\n');
-                    } else {
-                        stream.markdown('**📝 System Prompt Selected:**');
-                        stream.markdown('\n\n');
-                        stream.markdown(
-                            `${tempPrompt?.associatedSystemPrompts[this.systemPromptIndex!].normalizedText}`
-                        );
                         stream.markdown('\n\n');
                     }
                 }
@@ -968,6 +982,7 @@ export class PrompterParticipant {
         if (editor) {
             const currentFile = editor.document.fileName;
             // search for prompts in current file
+            // TODO might be interesting to implement caching on the prompts in the cu
             if (this.extensionUri) {
                 const prompts = await findPrompts(this.extensionUri, [
                     { path: currentFile, contents: editor.document.getText() },
@@ -988,7 +1003,12 @@ export class PrompterParticipant {
                                     prompts[i].endLocation.character >=
                                         endLocation.character))
                         ) {
-                            return prompts[i];
+                            let promptToReturn = structuredClone(prompts[i]);
+                            if (this.customSystemPrompt) {
+                                promptToReturn.selectedSystemPromptText =
+                                    this.customSystemPrompt;
+                            }
+                            return promptToReturn;
                         }
                     }
                 }
@@ -996,14 +1016,24 @@ export class PrompterParticipant {
                 // find the prompt that matches the prompt text
                 for (let i = 0; i < prompts.length; i++) {
                     if (prompts[i].rawText === promptText) {
-                        return prompts[i];
+                        let promptToReturn = structuredClone(prompts[i]);
+                        if (this.customSystemPrompt) {
+                            promptToReturn.selectedSystemPromptText =
+                                this.customSystemPrompt;
+                        }
+                        return promptToReturn;
                     }
                 }
 
                 // if no prompt is found return the first prompt that contains the prompt text
                 for (let i = 0; i < prompts.length; i++) {
                     if (prompts[i].rawText.includes(promptText)) {
-                        return prompts[i];
+                        let promptToReturn = structuredClone(prompts[i]);
+                        if (this.customSystemPrompt) {
+                            promptToReturn.selectedSystemPromptText =
+                                this.customSystemPrompt;
+                        }
+                        return promptToReturn;
                     }
                 }
                 // if no prompt is found return the prompt that contains the biggest part of the prompt text
@@ -1016,7 +1046,12 @@ export class PrompterParticipant {
                         maxMatchIndex = i;
                     }
                 }
-                return prompts[maxMatchIndex];
+                let promptToReturn = structuredClone(prompts[maxMatchIndex]);
+                if (this.customSystemPrompt) {
+                    promptToReturn.selectedSystemPromptText =
+                        this.customSystemPrompt;
+                }
+                return promptToReturn;
             }
         }
         return undefined;
