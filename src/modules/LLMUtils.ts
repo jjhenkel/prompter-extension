@@ -346,6 +346,7 @@ export async function sendChatRequest(
             console.error('No response from LLM');
             return (
                 '{"error": "No response from"' +
+                'a' +
                 configuration.LLM_Backend +
                 ' "LLM"}'
             );
