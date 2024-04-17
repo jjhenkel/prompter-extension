@@ -17,7 +17,7 @@ export type patchedVariable = {
 export async function patchHoles(
     promptObject: PromptMetadata,
     forceRepatch: boolean = false,
-    useSystemPrompt?: string
+    useSystemPrompt: boolean = true
 ) {
     for (let key in promptObject.templateValues) {
         if (!promptObject.templateValues[key].defaultValue || forceRepatch) {
@@ -37,7 +37,7 @@ export async function patchHoles(
 async function _patchValue(
     prompt: PromptMetadata,
     templateValue: PromptTemplateHole,
-    systemPrompt?: string
+    useSystemPrompt: boolean
 ): Promise<patchedVariable> {
     let userPromptToSend = HoleFillingPromptJson.user_prompt;
     let systemPromptToSend = HoleFillingPromptJson.system_prompt;
@@ -104,10 +104,10 @@ async function _patchValue(
     }
     userPromptToSend = tempUserPromptToSend;
     // add the system prompt and corresponding command if available
-    if (systemPrompt !== undefined) {
+    if (useSystemPrompt && prompt.selectedSystemPromptText !== undefined) {
         const systemPromptCmd =
             ' .\n To better inform your guess, you should use the following system prompt for guidance context: \n ' +
-            systemPrompt;
+            prompt.selectedSystemPromptText;
         userPromptToSend = userPromptToSend.replace(
             '{{' + HoleFillingPromptJson.injected_variables[3] + '}}',
             systemPromptCmd
