@@ -253,7 +253,7 @@ export function canonizePromptWithTreeSitter(
         // console.log('File loaded');
         const tree = parser.parse(sourceFileContents.toString());
         // get the node's descendants recursively that are strings and identifiers
-        if (node?.type === 'string') {
+        if (node?.type === 'string' && node.text.startsWith('"')) {
             return [node.text.slice(1, -1), {}];
         } else if (node?.type === 'identifier') {
             const identifier = node.text;
@@ -318,8 +318,12 @@ export function canonizePromptWithTreeSitter(
                 ];
             }
         }
-        // assume the default of joining for other cases (addition, redirection, fstring, etc.).
-        return ['"' + childrenValues?.join('') + '"' || '', templateHoles];
+        let tempStr = childrenValues?.join('');
+        if (tempStr?.endsWith('+"')) {
+            // remove the last concatenation operator
+            tempStr = tempStr.slice(0, -2);
+        }
+        return ['"' + tempStr + '"' || '', templateHoles];
     } catch (e) {
         console.log(e);
         return ['', {}];
