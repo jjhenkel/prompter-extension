@@ -115,6 +115,7 @@ export const findPrompts = async (
                 results = results.concat(
                     await _findMessageDictionary(file.path, tree, pythonGrammar)
                 );
+
                 // find all the prompts that are system prompts
                 // and associate them with the prompts that are not system prompts
                 const systemPrompts = results.filter(
@@ -604,6 +605,11 @@ const _createPromptMetadata = async (
             .split("'role':")[1]
             ?.split("'")[1];
         if (role.toLowerCase() === 'system') {
+            promptMeta.isSystemPrompt = true;
+        }
+    } else if (promptMeta.rawTextOfParentCall.includes('=')) {
+        let variable_name = promptMeta.rawTextOfParentCall.split('=')[0].trim();
+        if (variable_name.toLowerCase().includes('system')) {
             promptMeta.isSystemPrompt = true;
         }
     }

@@ -97,4 +97,18 @@ suite('Finder Test Suite', () => {
         ]);
         assert.equal(result.length, 3);
     });
+
+    test('Find System Prompts', async () => {
+        const path =
+            extensionUri +
+            '/src/test/Prompt Finder Test Samples/system-prompts.py';
+        const contents = readFileSync(path, 'utf8');
+        const result = await findPrompts(vscode.Uri.parse(extensionUri), [
+            { contents: contents, path: path },
+        ]);
+        assert.ok(result.length >= 2);
+        for (const prompt of result) {
+            assert.equal(prompt.isSystemPrompt, true);
+        }
+    });
 });
