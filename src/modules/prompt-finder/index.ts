@@ -44,9 +44,10 @@ export type PromptMetadata = {
         [key: string]: PromptParameter;
     };
     sourceFilePath: string;
-    // promptNode?: Parser.SyntaxNode;
+    promptNode?: Parser.SyntaxNode;
     isSystemPrompt?: boolean;
     associatedSystemPrompts?: [PromptMetadata];
+    selectedSystemPromptText?: string;
 };
 
 // This module defines a function, findPrompts, that takes
@@ -114,6 +115,27 @@ export const findPrompts = async (
                 results = results.concat(
                     await _findMessageDictionary(file.path, tree, pythonGrammar)
                 );
+                // remove duplicates by checking if the prompt node is the same or is the descendant of another prompt node
+                results = results.filter((prompt, index) => {
+                    for (let i = 0; i < results.length; i++) {
+                        let currentPrompt = results[i];
+                        let type = prompt.promptNode!.type.toString();
+                        let descendants =
+                            currentPrompt.promptNode!.descendantsOfType(type);
+                        if (
+                            i !== index &&
+                            (prompt.promptNode?.equals(
+                                currentPrompt.promptNode!
+                            ) ||
+                                descendants.some((descendant) =>
+                                    descendant.equals(prompt.promptNode!)
+                                ))
+                        ) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
                 // find all the prompts that are system prompts
                 // and associate them with the prompts that are not system prompts
                 const systemPrompts = results.filter(
@@ -136,6 +158,14 @@ export const findPrompts = async (
                                 systemPrompt
                             );
                         }
+                    }
+                    if (
+                        nonSystemPrompt.associatedSystemPrompts !== undefined &&
+                        nonSystemPrompt.associatedSystemPrompts.length > 0
+                    ) {
+                        nonSystemPrompt.selectedSystemPromptText =
+                            nonSystemPrompt.selectedSystemPromptText =
+                                nonSystemPrompt.associatedSystemPrompts[0].normalizedText;
                     }
                 }
 
@@ -597,6 +627,11 @@ const _createPromptMetadata = async (
         if (role.toLowerCase() === 'system') {
             promptMeta.isSystemPrompt = true;
         }
+    } else if (promptMeta.rawTextOfParentCall.includes('=')) {
+        let variable_name = promptMeta.rawTextOfParentCall.split('=')[0].trim();
+        if (variable_name.toLowerCase().includes('system')) {
+            promptMeta.isSystemPrompt = true;
+        }
     }
 
     promptMeta.parentCallStartLocation = toVSCodePosition(
@@ -616,6 +651,7 @@ const _createPromptMetadata = async (
         promptMeta.endLocation.line + 1,
         promptMeta.endLocation.character
     );
+    promptMeta.promptNode = promptNode;
 
     // The template holes and normalized text will be dealt with later
     try {

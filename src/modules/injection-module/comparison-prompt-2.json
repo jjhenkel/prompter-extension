@@ -1,5 +1,5 @@
 {
     "system_prompt": "You are a helpful AI assistant that's an expert in understanding and comparing text. You rely on various attributes of the text while doing your comparison.",
-    "user_prompt": "You will be provided 2 strings to compare. You will evaluate the similarity of these 2 string based on whether they share the  same context, goal, tone and sentiment.  You will Answer by saying yes or no only once  regarding their similarity , and how certain you are on a floating scale from 0 to 1. You answer MUST BE ONLY a JSON with ONLY the labels similar, similarity_score. YOUR ANSWER MUST BE A VALID JSON FILE. The 2 strings are contained within \"\" \\n String 1 = \"{{prompt1}}\" \\n String 2 = \"{{prompt2}}\"  ",
+    "user_prompt": "You will be provided 2 strings to compare. You will evaluate the similarity of these 2 string based on whether they share the  same context, goal, tone and sentiment.  You will Answer by saying yes or no only once  regarding their similarity , and how certain you are on a floating scale from 0 to 1. You answer MUST BE ONLY a JSON with ONLY the labels similar, similarity_score. YOUR ANSWER MUST BE A VALID JSON FILE. DO NOT WRITE ANY TEXT OTHER THAN THE JSON OBJECT. The 2 strings are contained within \"\" \\n String 1 = \"{{prompt1}}\" \\n String 2 = \"{{prompt2}}\"  ",
     "injected_variables": ["prompt1", "prompt2"]
 }

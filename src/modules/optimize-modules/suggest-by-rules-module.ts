@@ -49,7 +49,7 @@ Example response:"
     "suggestion": "###Instruction###\nYour task is to help me improve my essay to be more logical. You MUST ensure that your answer is unbiased and does not rely on stereotypes. Think step by step and use simple English like you're explaining something to a 5-year-old. You will be penalized if the improvement suggestions are not logical.\n\n###Example###\nOriginal sentence: 'The quick brown fox jumps over the lazy dog.'\nImproved sentence: 'The agile brown fox leaps over the lethargic dog.'\n\n###Question###\nHelp me improve my essay to be more logical. Essay: {essay}"
 }"
 
-MAKE SURE THAT YOUR ANSWER IS A VALID JSON FILE.
+MAKE SURE THAT YOUR ANSWER IS A VALID JSON FILE. DO NOT WRITE ANY TEXT OTHER THAN THE JSON OBJECT.
 Take a deep breath and work on this problem step-by-step.`;
 
 async function suggestImprovement(

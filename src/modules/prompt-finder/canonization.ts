@@ -28,7 +28,9 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
         // fallback to local parsing in case LLM fails to generate a proper response
         const json_error = JSON.parse(finalResponse);
         if (json_error.error) {
-            console.log('Error in canonizeWithTreeSitterANDCopilotGPT');
+            console.log(
+                'Error in canonizeWithTreeSitterANDCopilotGPT, trying LLM only parsing'
+            );
             console.log(json_error.error_message);
         }
         //canonizeOnlyWithLLM
@@ -39,13 +41,15 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
         try {
             const json_error = JSON.parse(finalResponse);
             if (json_error.error) {
-                console.log('Error in canonizeWithLLMOnly');
+                console.log(
+                    'Error in canonizeWithLLMOnly, trying local only parsing'
+                );
                 console.log(json_error.error_message);
             }
 
             [finalResponse, templateHoles] =
                 completeCanonizePromptWithTreeSitter(sourceFile, node, parser);
-        } catch (e) {}
+        } catch (e) { }
     } catch (e) {
         // NOT an error, just a normal flow
     }
@@ -249,7 +253,7 @@ export function canonizePromptWithTreeSitter(
         // console.log('File loaded');
         const tree = parser.parse(sourceFileContents.toString());
         // get the node's descendants recursively that are strings and identifiers
-        if (node?.type === 'string') {
+        if (node?.type === 'string' && node.text.startsWith('"')) {
             return [node.text.slice(1, -1), {}];
         } else if (node?.type === 'identifier') {
             const identifier = node.text;
