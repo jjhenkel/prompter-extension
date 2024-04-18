@@ -106,7 +106,7 @@ suite('Finder Test Suite', () => {
         const result = await findPrompts(vscode.Uri.parse(extensionUri), [
             { contents: contents, path: path },
         ]);
-        assert.ok(result.length >= 2);
+        assert.equal(result.length, 2);
         for (const prompt of result) {
             assert.equal(prompt.isSystemPrompt, true);
         }
