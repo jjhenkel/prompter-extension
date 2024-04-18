@@ -7,8 +7,13 @@ from pprint import pprint
 import key
 
 
-def product_observation(prompt_product_desc, prompt_seller_persona):
+def product_observation(prompt_product_desc):
     print("Running product observation")
+    system_prompt = {
+        "role":"system",
+        "content":"The following is a conversation with an AI Customer Segment Recommender for a flower shop."
+    }
+    prompt_seller_persona = "the  owner"
     response = openai.Completion.create(
         model="text-davinci-002",
         # trained responses

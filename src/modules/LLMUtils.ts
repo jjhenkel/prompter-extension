@@ -7,6 +7,13 @@ import config from './config.json';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { createExponetialDelay, retryAsync, waitUntilAsync } from 'ts-retry';
 
+let getEncoding: any;
+async function loadTikTokenModule() {
+    const tiktokenModule = await import('js-tiktoken');
+    getEncoding = tiktokenModule.getEncoding;
+}
+loadTikTokenModule();
+
 // define interface for the config json file
 
 async function retryExponential<T>(
@@ -35,15 +42,19 @@ async function retryExponential<T>(
 
 export const GPTModel = {
     GPT3_5Turbo: {
-        OpenAI: 'gpt-3.5-turbo',
-        Azure: 'gpt-35-turbo',
-        Copilot: 'copilot-gpt-3.5-turbo',
+        OpenAI: { ID: 'gpt-3.5-turbo', token_limit: 4096 },
+        Azure: { ID: 'gpt-35-turbo', token_limit: 4096 },
+        Copilot: { ID: 'copilot-gpt-3.5-turbo', token_limit: 4096 },
     },
-    GPT4: { OpenAI: 'gpt-4', Azure: 'gpt-4', Copilot: 'copilot-gpt-4' },
+    GPT4: {
+        OpenAI: { ID: 'gpt-4', token_limit: 4096 },
+        Azure: { ID: 'gpt-4', token_limit: 4096 },
+        Copilot: { ID: 'copilot-gpt-4', token_limit: 4096 },
+    },
     GPT4_Turbo: {
-        OpenAI: 'gpt-4-turbo-preview',
-        Azure: 'gpt-4-turbo-preview',
-        Copilot: 'copilot-gpt-3.5-turbo',
+        OpenAI: { ID: 'gpt-4-turbo-preview', token_limit: 4096 },
+        Azure: { ID: 'gpt-4-turbo-preview', token_limit: 4096 },
+        Copilot: { ID: 'copilot-gpt-3.5-turbo', token_limit: 4096 },
     },
 } as const;
 
@@ -83,6 +94,10 @@ export function setBackend(backend: Backend) {
 
 export function getBackend(): Backend {
     return configuration.LLM_Backend;
+}
+
+export function getBackendName(): string {
+    return Backend[configuration.LLM_Backend];
 }
 
 export function getEndpoint(): string | undefined {
@@ -177,7 +192,7 @@ export async function sendChatRequestAndGetDirectResponse(
             if (client && client instanceof OpenAI) {
                 return await client.chat.completions.create({
                     messages: organizedMessages,
-                    model: LLMOptions?.model[config.LLM_Backend],
+                    model: LLMOptions?.model[config.LLM_Backend].ID,
                     temperature: (LLMOptions?.temperature as number) ?? 0.3,
                     seed: (LLMOptions?.seed as number) ?? 42,
                     // transform remaining LLMOptions into parameter value pairs
@@ -223,7 +238,7 @@ export async function sendChatRequestAndGetDirectResponse(
         const result = await retryExponential(async () => {
             if (client && 'sendChatRequest' in client) {
                 return await client.sendChatRequest(
-                    LLMOptions?.model.Copilot ?? 'copilot-gpt-3.5-turbo',
+                    LLMOptions?.model.Copilot.ID ?? 'copilot-gpt-3.5-turbo',
                     convertedMessages,
                     {
                         modelOptions: copyOfLLMOptions,
@@ -275,7 +290,7 @@ export async function sendChatRequest(
         return '{"error": "Issue during LLM Backend configuration"}';
     }
 
-    if (addFailureMessage) {
+    if (addFailureMessage! === true) {
         organizedMessages.push({
             role: 'user',
             content:
@@ -370,3 +385,65 @@ export function cleanJson(result: any) {
     return result;
 }
 // TODO - Add more utility functions here
+
+// get number of tokens in prompt to be sent to LLM
+export async function getNumberOfTokens(prompt: string): Promise<number> {
+    // encode the prompt with tiktoken
+    await loadTikTokenModule();
+    const enc = getEncoding('cl100k_base');
+    const encodedPrompt = enc.encode(prompt);
+    // return the number of tokens in the prompt
+    return encodedPrompt.length;
+}
+export async function getLeastFrequentToken(
+    prompt: string
+): Promise<[string, number]> {
+    // encode the prompt with tiktoken
+    await loadTikTokenModule();
+    const enc = getEncoding('cl100k_base');
+    const encodedPrompt = enc.encode(prompt);
+    // get the least frequent token in the prompt
+    let smallest_frequency = encodedPrompt.reduce((a: number, b: number) =>
+        a < b ? a : b
+    );
+    return enc.decode(smallest_frequency), smallest_frequency;
+}
+
+export function getMaxTokenLength(model: GPTModel): number {
+    let numberOfTokens = 0;
+    const backendName = getBackendName();
+    if (backendName === 'Azure') {
+        return model.Azure.token_limit;
+    } else if (backendName === 'OpenAI') {
+        return model.OpenAI.token_limit;
+    } else if (backendName === 'Copilot') {
+        return model.Copilot.token_limit;
+    } else {
+        console.log('Invalid Backend');
+        return 0;
+    }
+}
+
+export async function isPromptShortEnoughForModel(
+    prompt: string,
+    model: GPTModel
+): Promise<boolean> {
+    const numberOfTokens = await getNumberOfTokens(prompt);
+    const maxTokenCount = getMaxTokenLength(model);
+    return numberOfTokens <= maxTokenCount;
+}
+
+export async function slicePromptForModel(
+    prompt: string,
+    model: GPTModel
+): Promise<string> {
+    await loadTikTokenModule();
+    // encode the prompt with tiktoken
+    const enc = getEncoding('cl100k_base');
+    const encodedPrompt = enc.encode(prompt);
+    const backendName = getBackendName();
+    let tokenLimit = getMaxTokenLength(model);
+    // slice the prompt to the token limit
+    const slicedPrompt = encodedPrompt.slice(0, tokenLimit);
+    return enc.decode(slicedPrompt);
+}
