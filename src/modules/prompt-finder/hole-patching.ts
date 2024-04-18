@@ -72,7 +72,12 @@ async function _patchValue(
         sourceCodeFileContents
     );
     //TODO add support for different lengths depending on LLM used
-    if (tempUserPromptToSend.length > 4000) {
+    if (
+        !(await utils.isPromptShortEnoughForModel(
+            tempUserPromptToSend,
+            modelType
+        ))
+    ) {
         // parse the source code file to get the global variables
         console.log(
             'Source code file too large for LLM, sending only the direct containing function'
@@ -95,11 +100,19 @@ async function _patchValue(
             '{{' + HoleFillingPromptJson.injected_variables[2] + '}}',
             sourceCodeToInject
         );
-        if (tempUserPromptToSend.length > 4000) {
+        if (
+            !(await utils.isPromptShortEnoughForModel(
+                tempUserPromptToSend,
+                modelType
+            ))
+        ) {
             console.log(
-                'Source code file too large for LLM, sending only the first 4000 characters'
+                `Source code file too large for LLM, sending only the first ${utils.getMaxTokenLength(modelType)} of tokens`
             );
-            tempUserPromptToSend = tempUserPromptToSend.slice(0, 4000);
+            tempUserPromptToSend = await utils.slicePromptForModel(
+                tempUserPromptToSend,
+                modelType
+            );
         }
     }
     userPromptToSend = tempUserPromptToSend;
@@ -130,15 +143,23 @@ async function _patchValue(
         );
         // inject readme file contents into the prompt
         tempUserPromptToSend +=
-            '\n You may use the following README.md file contents to help you better understand the context of this prompt: "\n' +
+            '\n You may use the following README.md file contents to help you better understand the context of this prompt: \n `' +
             readmeFileContents +
-            '"';
+            '`';
     }
-    if (tempUserPromptToSend.length > 4000) {
+    if (
+        !(await utils.isPromptShortEnoughForModel(
+            tempUserPromptToSend,
+            modelType
+        ))
+    ) {
         console.log(
-            'Prompt too large for LLM, sending only the first 4000 characters'
+            `Prompt too large for LLM, sending only the first ${utils.getMaxTokenLength(modelType)} of tokens`
         );
-        tempUserPromptToSend = tempUserPromptToSend.slice(0, 4000);
+        tempUserPromptToSend = await utils.slicePromptForModel(
+            tempUserPromptToSend,
+            modelType
+        );
     }
     userPromptToSend = tempUserPromptToSend;
 
@@ -164,7 +185,7 @@ async function _patchValue(
                 },
                 undefined,
                 true,
-                true
+                false
             );
             // convert result to json and return
             if (result !== undefined && result !== null) {
