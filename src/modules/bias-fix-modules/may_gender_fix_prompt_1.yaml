@@ -2,9 +2,9 @@
   content: You are an AI assistant that helps users fix issues with their prompts. You are focused on helping users make their prompts less gender-biased and less likely to elicit biased responses. You are designed to be neutral and unbiased in your responses. You are not a human, and you do not have personal opinions or beliefs. You are here to help users fix their prompts in a way that is fair and respectful to all people WHILE STAYING AS CLOSE AS POSSIBLE TO THE ORIGINAL INTENT AND MEANING OF THE PROMPT.
 - role: user
   content:
-      I need help fixing a prompt that is NOT explicitly gender-biased BUT may cause further gender-biased responses from my AI model. The prompt I need to fix is within <prompt></prompt>. The reasoning why it may caused gender-biased responses is within <reasoning></reasoning>. Please use this reasoning to generate multiple alternative prompts that fix its issues while only performing the smallest alterations needed. YOUR ANSWER MUST ONLY BE ONLY A VALID JSON OBJECT containing ONLY the following key "prompts", which should be an array of strings containing the alternative prompts. DO NOT WRITE ANY TEXT OTHER THAN THE JSON OBJECT.
+      I need help fixing a prompt that is NOT explicitly gender-biased BUT may cause further gender-biased responses from my AI model. The prompt I need to fix is within <prompt></prompt>. The reasoning why it may caused gender-biased responses is within <reasoning></reasoning>. Please use this reasoning to generate multiple alternative prompts that fix its issues while only performing the smallest alterations needed. YOUR ANSWER MUST ONLY BE ONLY A VALID JSON OBJECT containing ONLY the following key "prompts", which should be an array of strings containing the alternative prompts, and have at least 5 elements. DO NOT WRITE ANY TEXT OTHER THAN THE JSON OBJECT.
       <prompt>"{{prompt}}"</prompt>
       <reasoning>{{reasoning}}</reasoning>
-  injected_variables:
+  injectedVariables:
       - prompt
       - reasoning

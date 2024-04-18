@@ -180,8 +180,8 @@ export async function sendChatRequestAndGetDirectResponse(
 
     const filteredOptions: [string, any][] = LLMOptions
         ? Object.entries(LLMOptions).filter(([key, value]) => {
-            return key !== 'model' && key !== 'temperature' && key !== 'seed';
-        })
+              return key !== 'model' && key !== 'temperature' && key !== 'seed';
+          })
         : [];
     const otherOptions: Record<string, any> =
         Object.fromEntries(filteredOptions);
@@ -244,7 +244,7 @@ export async function sendChatRequestAndGetDirectResponse(
                         modelOptions: copyOfLLMOptions,
                     },
                     cancellationToken ||
-                    new vscode.CancellationTokenSource().token
+                        new vscode.CancellationTokenSource().token
                 );
             }
         });

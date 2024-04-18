@@ -116,11 +116,12 @@ export async function fixGenderBias(
     const numberOfSuggestions = 5;
     const maxNumberOfGenerationAttempts = 10;
     while (
-        genderBiasFixPromises.length !== 0 ||
-        maybeGenderBiasFixPromises.length !== 0 ||
-        fixedPrompts.length < numberOfSuggestions ||
-        fix_attempt_count < maxNumberOfGenerationAttempts
+        (genderBiasFixPromises.length !== 0 ||
+            maybeGenderBiasFixPromises.length !== 0) &&
+        (fixedPrompts.length < numberOfSuggestions ||
+            fix_attempt_count < maxNumberOfGenerationAttempts)
     ) {
+        fix_attempt_count += 1;
         let fixResultsJSONs = await Promise.all(genderBiasFixPromises);
         // flatten the array of prompts
         let allPrompts: Array<string> = [];

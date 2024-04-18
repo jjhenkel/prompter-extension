@@ -49,7 +49,7 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
 
             [finalResponse, templateHoles] =
                 completeCanonizePromptWithTreeSitter(sourceFile, node, parser);
-        } catch (e) { }
+        } catch (e) {}
     } catch (e) {
         // NOT an error, just a normal flow
     }
