@@ -12,16 +12,17 @@ import { patchHoles } from '../prompt-finder/hole-patching';
 const modelType = LLMUtils.GPTModel.GPT3_5Turbo;
 
 async function checkVariableInjection(
-    prompt: PromptMetadata
+    prompt: PromptMetadata,
+    useSystemPrompt: boolean = true
 ): Promise<JSONSchemaObject> {
     // load prompt from json file
     // extract prompt from json file
-    const systemPromptText: string = PromptJson.system_prompt;
-    let userPromptText: string = PromptJson.user_prompt; // empty for now
+    let systemPromptText: string = PromptJson.system_prompt;
+    // let userPromptText: string = PromptJson.user_prompt; // empty for now
     // inject text variables into prompt
     // const variables_to_inject = PromptJson.injected_variables;
     // userPromptText = userPromptText.replaceAll("__","\n");
-    let userPrompt = prompt;
+    // let userPrompt = prompt;
     // let promptVariables: string[] | null = [];
     // extract variables in prompt by finding string + var + string or by finding {var} in string
     let defaultValuesPrompt = prompt.normalizedText;
@@ -31,6 +32,15 @@ async function checkVariableInjection(
             '{{' + key + '}}',
             prompt.templateValues[key].defaultValue
         );
+    }
+    if (useSystemPrompt) {
+        if (
+            prompt.selectedSystemPromptText !== undefined &&
+            prompt.selectedSystemPromptText !== null &&
+            prompt.selectedSystemPromptText !== ''
+        ) {
+            systemPromptText = prompt.selectedSystemPromptText;
+        }
     }
 
     let default_response: string = '';
