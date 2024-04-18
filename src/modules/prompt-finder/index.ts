@@ -115,7 +115,27 @@ export const findPrompts = async (
                 results = results.concat(
                     await _findMessageDictionary(file.path, tree, pythonGrammar)
                 );
-
+                // remove duplicates by checking if the prompt node is the same or is the descendant of another prompt node
+                results = results.filter((prompt, index) => {
+                    for (let i = 0; i < results.length; i++) {
+                        let currentPrompt = results[i];
+                        let type = prompt.promptNode!.type.toString();
+                        let descendants =
+                            currentPrompt.promptNode!.descendantsOfType(type);
+                        if (
+                            i !== index &&
+                            (prompt.promptNode?.equals(
+                                currentPrompt.promptNode!
+                            ) ||
+                                descendants.some((descendant) =>
+                                    descendant.equals(prompt.promptNode!)
+                                ))
+                        ) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
                 // find all the prompts that are system prompts
                 // and associate them with the prompts that are not system prompts
                 const systemPrompts = results.filter(
