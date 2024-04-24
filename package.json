@@ -41,6 +41,10 @@
                         "description": "Analyze injection vulnerability of a selected prompt"
                     },
                     {
+                        "name": "select-system-prompt",
+                        "description": "Select or define a system prompt for Prompt Analysis tasks"
+                    },
+                    {
                         "name": "suggest-by-rules",
                         "description": "Suggest improvements for a prompt based on OpenAI rules"
                     },
@@ -96,6 +100,7 @@
         "@types/sprintf-js": "^1.1.4",
         "axios": "^1.6.7",
         "copyfiles": "^2.4.1",
+        "js-tiktoken": "^1.0.11",
         "natural": "^6.12.0",
         "object-hash": "^3.0.0",
         "openai": "^4.28.0",
