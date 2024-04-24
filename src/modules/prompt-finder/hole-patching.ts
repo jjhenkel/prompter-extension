@@ -34,6 +34,23 @@ export async function patchHoles(
     }
 }
 
+export function unpatchHoles(
+    newPromptString: string,
+    promptObject: PromptMetadata
+): [string, string[]] {
+    let unmatchedKeys = [];
+    for (let key in promptObject.templateValues) {
+        let value = promptObject.templateValues[key].defaultValue;
+        if (value && newPromptString.includes(value)) {
+            newPromptString = newPromptString.replace(value, '{{' + key + '}}');
+        } else {
+            console.log('Error: Could not find value to unpatch');
+            unmatchedKeys.push(key);
+        }
+    }
+    return [newPromptString, unmatchedKeys];
+}
+
 async function _patchValue(
     prompt: PromptMetadata,
     templateValue: PromptTemplateHole,
