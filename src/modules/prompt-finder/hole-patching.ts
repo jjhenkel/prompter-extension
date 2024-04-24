@@ -1,6 +1,5 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as utils from '../LLMUtils.js';
-import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import * as vscode from 'vscode';
 import { PromptMetadata, PromptTemplateHole } from './index.js';
 import * as fs from 'fs';
@@ -9,15 +8,23 @@ import path from 'path';
 
 const modelType = utils.GPTModel.GPT3_5Turbo;
 
+export type patchedVariable = {
+    name: string;
+    value: string;
+    error?: string;
+};
+
 export async function patchHoles(
     promptObject: PromptMetadata,
-    forceRepatch: boolean = false
+    forceRepatch: boolean = false,
+    useSystemPrompt: boolean = true
 ) {
     for (let key in promptObject.templateValues) {
         if (!promptObject.templateValues[key].defaultValue || forceRepatch) {
             let fillValue = await _patchValue(
                 promptObject,
-                promptObject.templateValues[key]
+                promptObject.templateValues[key],
+                useSystemPrompt
             );
             if (fillValue.error) {
                 return;
@@ -29,8 +36,9 @@ export async function patchHoles(
 
 async function _patchValue(
     prompt: PromptMetadata,
-    templateValue: PromptTemplateHole
-): Promise<JSONSchemaObject> {
+    templateValue: PromptTemplateHole,
+    useSystemPrompt: boolean
+): Promise<patchedVariable> {
     let userPromptToSend = HoleFillingPromptJson.user_prompt;
     let systemPromptToSend = HoleFillingPromptJson.system_prompt;
     let promptWithHoles = prompt.normalizedText;
@@ -51,27 +59,109 @@ async function _patchValue(
         variableName
     );
     // load source code file contents from file
+    // convert the source code file path to a  uri
+    const sourceCodeFilePath = vscode.Uri.file(prompt.sourceFilePath);
     const sourceCodeFileContents = fs.readFileSync(
-        prompt.sourceFilePath,
+        sourceCodeFilePath.fsPath,
         'utf8'
     );
 
     // inject source code file contents into the prompt
-    userPromptToSend = userPromptToSend.replace(
+    let tempUserPromptToSend = userPromptToSend.replace(
         '{{' + HoleFillingPromptJson.injected_variables[2] + '}}',
         sourceCodeFileContents
     );
+    //TODO add support for different lengths depending on LLM used
+    if (
+        !(await utils.isPromptShortEnoughForModel(
+            tempUserPromptToSend,
+            modelType
+        ))
+    ) {
+        // parse the source code file to get the global variables
+        console.log(
+            'Source code file too large for LLM, sending only the direct containing function'
+        );
+        let sourceCodeToInject = '';
+        if (prompt.promptNode !== undefined) {
+            let scopePrompt = prompt.promptNode;
+            while (
+                scopePrompt.type !== 'function' &&
+                scopePrompt.parent !== undefined &&
+                scopePrompt.parent !== null
+            ) {
+                scopePrompt = scopePrompt.parent;
+            }
+            sourceCodeToInject = scopePrompt.text;
+        } else {
+            sourceCodeToInject = prompt.rawTextOfParentCall;
+        }
+        tempUserPromptToSend = tempUserPromptToSend.replace(
+            '{{' + HoleFillingPromptJson.injected_variables[2] + '}}',
+            sourceCodeToInject
+        );
+        if (
+            !(await utils.isPromptShortEnoughForModel(
+                tempUserPromptToSend,
+                modelType
+            ))
+        ) {
+            console.log(
+                `Source code file too large for LLM, sending only the first ${utils.getMaxTokenLength(modelType)} of tokens`
+            );
+            tempUserPromptToSend = await utils.slicePromptForModel(
+                tempUserPromptToSend,
+                modelType
+            );
+        }
+    }
+    userPromptToSend = tempUserPromptToSend;
+    // add the system prompt and corresponding command if available
+    if (useSystemPrompt && prompt.selectedSystemPromptText !== undefined) {
+        const systemPromptCmd =
+            ' .\n To better inform your guess, you should use the following system prompt for guidance context: \n ' +
+            prompt.selectedSystemPromptText;
+        userPromptToSend = userPromptToSend.replace(
+            '{{' + HoleFillingPromptJson.injected_variables[3] + '}}',
+            systemPromptCmd
+        );
+    } else {
+        userPromptToSend = userPromptToSend.replace(
+            '{{' + HoleFillingPromptJson.injected_variables[3] + '}}',
+            ''
+        );
+    }
     // look for read me file in the same directory , or the repository root
     let readmeFilePath = findReadmeFile(prompt.sourceFilePath);
     let readmeFileContents = '';
+    tempUserPromptToSend = userPromptToSend;
     if (readmeFilePath) {
-        readmeFileContents = await fs.promises.readFile(readmeFilePath, 'utf8');
+        const readmeFilePathURI = vscode.Uri.file(readmeFilePath);
+        readmeFileContents = await fs.promises.readFile(
+            readmeFilePathURI.fsPath,
+            'utf8'
+        );
         // inject readme file contents into the prompt
-        userPromptToSend +=
-            '\n You may use the following README.md file contents to help you better understand the context of this prompt: "\n' +
+        tempUserPromptToSend +=
+            '\n You may use the following README.md file contents to help you better understand the context of this prompt: \n `' +
             readmeFileContents +
-            '"';
+            '`';
     }
+    if (
+        !(await utils.isPromptShortEnoughForModel(
+            tempUserPromptToSend,
+            modelType
+        ))
+    ) {
+        console.log(
+            `Prompt too large for LLM, sending only the first ${utils.getMaxTokenLength(modelType)} of tokens`
+        );
+        tempUserPromptToSend = await utils.slicePromptForModel(
+            tempUserPromptToSend,
+            modelType
+        );
+    }
+    userPromptToSend = tempUserPromptToSend;
 
     // const deploymentId = 'gpt-35-turbo';
     const messages: ChatCompletionMessageParam[] = [
@@ -95,7 +185,7 @@ async function _patchValue(
                 },
                 undefined,
                 true,
-                true
+                false
             );
             // convert result to json and return
             if (result !== undefined && result !== null) {
@@ -118,7 +208,6 @@ async function _patchValue(
                     '"}'
             );
         }
-        return JSON.parse('{"error": "Issue during LLM completion"}');
     }
 }
 
