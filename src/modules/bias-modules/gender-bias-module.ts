@@ -9,7 +9,8 @@ import { patchHoles } from '../prompt-finder/hole-patching.js';
 //  json data fields: gender_biased: bool    may_cause_gender_bias: bool      reasoning: string
 
 async function checkGenderBias(
-    inputPrompt: PromptMetadata
+    inputPrompt: PromptMetadata,
+    useSystemPrompt: boolean = true
 ): Promise<JSONSchemaObject> {
     // load prompt from json file
     // extract prompt from json file
@@ -27,17 +28,30 @@ async function checkGenderBias(
     }
 
     let userPrompt = userPromptText;
-    for (const variable in variables_to_inject) {
-        let value = '{' + variables_to_inject[variable] + '}';
-        userPrompt = userPrompt.replaceAll(value, patchedPrompt);
+    // for (const variable in variables_to_inject) {
+    let value = '{{' + variables_to_inject[0] + '}}'; // prompt_text
+    userPrompt = userPrompt.replaceAll(value, patchedPrompt);
+    value = '{{' + variables_to_inject[1] + '}}'; // system_prompt
+    if (
+        useSystemPrompt === true &&
+        inputPrompt.selectedSystemPromptText !== undefined &&
+        inputPrompt.selectedSystemPromptText !== ''
+    ) {
+        userPrompt = userPrompt.replaceAll(
+            value,
+            'To enhance your analysis, use the following system prompt for context:' +
+                inputPrompt.selectedSystemPromptText
+        );
+    } else {
+        userPrompt = userPrompt.replaceAll(value, '');
     }
     // send the prompt to azure openai using client
-    // const deploymentId = 'gpt-35-turbo';
     const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPromptText },
         { role: 'user', content: userPrompt },
     ];
-    // console.log(messages);
+
+    console.log(messages);
     // convert messages list to chat request
     let client = utils.getClient();
     // console.log(client);
