@@ -75,6 +75,17 @@ export async function fixGenderBias(
         };
     }
     let initialGenderBiasCheck = await checkGenderBias(inputPrompt);
+    if (initialGenderBiasCheck.error) {
+        return { error: initialGenderBiasCheck.error };
+    }
+    if (
+        !initialGenderBiasCheck.gender_biased &&
+        !initialGenderBiasCheck.may_cause_gender_bias
+    ) {
+        return {
+            error: 'Prompt is not gender biased and should not cause gender-biased responses. No need to fix.',
+        };
+    }
     // extract the system prompt from the yaml file
     // extract the injected variables from the yaml file
     // inject text variables into prompt

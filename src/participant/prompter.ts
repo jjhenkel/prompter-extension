@@ -305,10 +305,10 @@ export class PrompterParticipant {
             for (let i = 0; i < 5; i++) {
                 stream.markdown(`**Prompt ${i + 1}**:`);
                 stream.markdown('\n\n');
-                stream.markdown(`${genderFixRes.prompts}`);
+                stream.markdown(`${genderFixRes.prompts[i]}`);
                 stream.markdown('\n\n');
                 // if unresolved Keys are found, show them
-                if (genderFixRes.unresolvedKeys) {
+                if (genderFixRes.unresolvedKeys.length > 0) {
                     stream.markdown(
                         ' We were unable to re-insert the following keys into the prompt:'
                     );
