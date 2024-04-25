@@ -79,6 +79,7 @@ suite('Bias Fix Test Suite', () => {
             assert.ok(result.prompts && result.prompts.length > 0);
             // pretty print the array of fixes
             console.log(JSON.stringify(result.prompts, null, 2));
+            console.log(JSON.stringify(result.unresolvedKeys, null, 2));
         });
     });
 });

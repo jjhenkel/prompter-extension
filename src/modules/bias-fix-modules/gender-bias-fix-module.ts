@@ -3,7 +3,7 @@ import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import path from 'path';
 import { PromptMetadata } from '../prompt-finder';
-import { patchHoles } from '../prompt-finder/hole-patching';
+import { patchHoles, unpatchHoles } from '../prompt-finder/hole-patching';
 import checkGenderBias from '../bias-modules/gender-bias-module';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as LLMUtils from '../LLMUtils';
@@ -18,6 +18,7 @@ export type serializedPrompt = {
 
 export type fixGenderBiasResult = {
     prompts: Array<string>;
+    unresolvedKeys: Array<string[]>;
 };
 
 export async function fixGenderBias(
@@ -245,7 +246,17 @@ export async function fixGenderBias(
         }
         // if it's still less than 5, will try again...
     }
-    return { prompts: fixedPrompts };
+    // unpatch the results before returning
+    let unresolvedKeys: string[][] = [];
+    for (let i = 0; i < fixedPrompts.length; i++) {
+        let tuple = unpatchHoles(fixedPrompts[i], inputPrompt);
+        fixedPrompts[i] = tuple[0];
+        unresolvedKeys = unresolvedKeys.concat(tuple[1]);
+    }
+    return {
+        prompts: fixedPrompts,
+        unresolvedKeys: unresolvedKeys,
+    } as fixGenderBiasResult;
 }
 
 function prepareFixPrompt(

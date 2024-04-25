@@ -18,7 +18,7 @@ loadTikTokenModule();
 
 async function retryExponential<T>(
     fn: () => Promise<T>,
-    maxTry: number = 10,
+    maxTry: number = 3,
     maxTimeout: number = 600000
 ): Promise<T> {
     const delay = createExponetialDelay(3000);
@@ -28,6 +28,10 @@ async function retryExponential<T>(
             delay,
             onError: (error: Error) => {
                 console.error(`Error on re/try:"${error.message}" Retrying...`);
+                // if the error is 400 stop retrying
+                // if (error.message.includes('400') && error.message.includes('content filtering')) {
+                //     return false;
+                // }
             },
             onMaxRetryFunc: (error: Error) => {
                 {
@@ -188,19 +192,29 @@ export async function sendChatRequestAndGetDirectResponse(
 
     // if backend is Azure or OpenAI
     if (client instanceof OpenAI) {
-        const response = await retryExponential(async () => {
-            if (client && client instanceof OpenAI) {
-                return await client.chat.completions.create({
-                    messages: organizedMessages,
-                    model: LLMOptions?.model[config.LLM_Backend].ID,
-                    temperature: (LLMOptions?.temperature as number) ?? 0.3,
-                    seed: (LLMOptions?.seed as number) ?? 42,
-                    // transform remaining LLMOptions into parameter value pairs
-                    ...otherOptions,
-                });
-            }
-        });
-        return response;
+        try {
+            const response = await retryExponential(async () => {
+                if (client && client instanceof OpenAI) {
+                    return await client.chat.completions.create({
+                        messages: organizedMessages,
+                        model: LLMOptions?.model[config.LLM_Backend].ID,
+                        temperature: (LLMOptions?.temperature as number) ?? 0.3,
+                        seed: (LLMOptions?.seed as number) ?? 42,
+                        // transform remaining LLMOptions into parameter value pairs
+                        ...otherOptions,
+                    });
+                }
+            });
+            return response;
+        } catch (error) {
+            console.error('Error sending chat request');
+            // console.error(error);
+            return (
+                '{"error": "Error sending chat request' +
+                JSON.stringify(error) +
+                '"}'
+            );
+        }
     } else {
         let convertedMessages: vscode.LanguageModelChatMessage[] = [];
         organizedMessages.forEach((message) => {
@@ -254,7 +268,7 @@ export async function sendChatRequestAndGetDirectResponse(
                 completeResult += fragment;
             }
         }
-        if (completeResult !== '') {
+        if (completeResult !== '' && completeResult !== undefined) {
             if (completeResult.startsWith('I am sorry')) {
                 console.error(
                     'LLM failed to generate an appropriate response, and I am sorry was returned'
@@ -268,11 +282,7 @@ export async function sendChatRequestAndGetDirectResponse(
             return completeResult;
         } else {
             console.error('No response from LLM');
-            return (
-                '{"error": "No response from"' +
-                configuration.LLM_Backend +
-                ' "LLM"}'
-            );
+            return '{"error": "No response from LLM"}';
         }
     }
 }
@@ -309,7 +319,7 @@ export async function sendChatRequest(
         if (response) {
             result = response.choices?.[0]?.message?.content;
         }
-        if (result !== null) {
+        if (result !== '' && result !== null && result !== undefined) {
             if (result.startsWith('I am sorry')) {
                 // console.error(
                 // 'LLM failed to generate an appropriate response, and I am sorry was returned'
@@ -326,11 +336,7 @@ export async function sendChatRequest(
             return result;
         } else {
             console.error('No response from LLM');
-            return (
-                '{"error": "No response from"' +
-                configuration.LLM_Backend +
-                ' "LLM"}'
-            );
+            return '{"error": "No response from LLM"}';
         }
     } else {
         response = response as string;
@@ -338,7 +344,11 @@ export async function sendChatRequest(
         if (response !== null && response !== undefined) {
             completeResult = response;
         }
-        if (completeResult !== '') {
+        if (
+            completeResult !== '' &&
+            completeResult !== null &&
+            completeResult !== undefined
+        ) {
             if (completeResult.startsWith('I am sorry')) {
                 console.error(
                     'LLM failed to generate an appropriate response, and I am sorry was returned'
@@ -355,12 +365,7 @@ export async function sendChatRequest(
             return completeResult;
         } else {
             console.error('No response from LLM');
-            return (
-                '{"error": "No response from"' +
-                'a' +
-                configuration.LLM_Backend +
-                ' "LLM"}'
-            );
+            return '{"error": "No response from LLM"}';
         }
     }
 }
