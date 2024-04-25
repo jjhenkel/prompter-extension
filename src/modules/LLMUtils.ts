@@ -184,13 +184,14 @@ export async function sendChatRequestAndGetDirectResponse(
 
     const filteredOptions: [string, any][] = LLMOptions
         ? Object.entries(LLMOptions).filter(([key, value]) => {
-              return key !== 'model' && key !== 'temperature' && key !== 'seed';
-          })
+            return key !== 'model' && key !== 'temperature' && key !== 'seed';
+        })
         : [];
     const otherOptions: Record<string, any> =
         Object.fromEntries(filteredOptions);
 
     // if backend is Azure or OpenAI
+    console.log(organizedMessages[1].content);
     if (client instanceof OpenAI) {
         try {
             const response = await retryExponential(async () => {
@@ -258,7 +259,7 @@ export async function sendChatRequestAndGetDirectResponse(
                         modelOptions: copyOfLLMOptions,
                     },
                     cancellationToken ||
-                        new vscode.CancellationTokenSource().token
+                    new vscode.CancellationTokenSource().token
                 );
             }
         });
@@ -331,7 +332,7 @@ export async function sendChatRequest(
                 );
             }
             if (cleanJsonOutput) {
-                result = cleanJson(result);
+                result = await cleanJson(result);
             }
             return result;
         } else {
@@ -360,7 +361,7 @@ export async function sendChatRequest(
                 );
             }
             if (cleanJsonOutput) {
-                completeResult = cleanJson(completeResult);
+                completeResult = await cleanJson(completeResult);
             }
             return completeResult;
         } else {
@@ -370,7 +371,7 @@ export async function sendChatRequest(
     }
 }
 
-export function cleanJson(result: any) {
+export async function cleanJson(result: any): Promise<string> {
     // if Answer = find it and remove everything before it
     let first_occurrence = result.indexOf('=');
     if (first_occurrence > 0) {
