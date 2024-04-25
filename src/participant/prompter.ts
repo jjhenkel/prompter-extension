@@ -7,6 +7,10 @@ import { patchHoles } from '../modules/prompt-finder/hole-patching';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
 import path from 'path';
 import fs from 'fs';
+import {
+    fixGenderBias,
+    fixGenderBiasResult,
+} from '../modules/bias-fix-modules/gender-bias-fix-module';
 
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
@@ -63,6 +67,11 @@ export class PrompterParticipant {
                         prompt: 'find-prompts',
                         command: 'find-prompts',
                         label: 'Find prompts in your workspace',
+                    },
+                    {
+                        prompt: 'fix-gender-bias',
+                        command: 'fix-gender-bias',
+                        label: 'Attempt to fix gender bias and bias potential in a prompt',
                     },
                     {
                         prompt: 'analyze-injection-vulnerability',
@@ -136,6 +145,15 @@ export class PrompterParticipant {
                 await this._handleFindPrompts(request, context, stream, token);
                 return { metadata: { command: 'find-prompts' } };
             }
+            case 'fix-gender-bias': {
+                await this._handleFixGenderBiasPrompt(
+                    request,
+                    context,
+                    stream,
+                    token
+                );
+                return { metadata: { command: 'fix-gender-bias' } };
+            }
             case 'parse-prompt': {
                 await this._handleParsePrompt(request, context, stream, token);
                 return { metadata: { command: 'parse-prompt' } };
@@ -184,6 +202,128 @@ export class PrompterParticipant {
             }
         }
     }
+    async _handleFixGenderBiasPrompt(
+        request: vscode.ChatRequest,
+        context: vscode.ChatContext,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken
+    ) {
+        stream.markdown(
+            'This module will attempt to fix Gender Bias or Bias Potential in the selected prompt.'
+        );
+        stream.markdown('\n\n');
+        stream.markdown(
+            'It will default to using the text selected in the editor as a prompt.'
+        );
+        stream.markdown('\n\n');
+        stream.markdown(
+            'If no text is selected, it will default to using the prompt saved internally via the find prompts command.'
+        );
+        stream.markdown('\n\n');
+        // check if text is selected
+        const editor = vscode.window.activeTextEditor;
+        let tempPrompt: PromptMetadata | undefined;
+        if (editor) {
+            const selectedText = editor.document.getText(editor.selection);
+            if (selectedText) {
+                // if selected text is found, analyze it
+                stream.markdown(
+                    'Analyzing selected text... [This may take a while]'
+                );
+                stream.markdown('\n\n');
+                const startLocation =
+                    vscode.window.activeTextEditor?.selection.start;
+                const endLocation =
+                    vscode.window.activeTextEditor?.selection.end;
+                let tempPrompt = await this._findCorrespondingPromptObject(
+                    selectedText,
+                    startLocation,
+                    endLocation
+                );
+                if (!tempPrompt) {
+                    stream.markdown(
+                        'No corresponding prompt found in the current file, make sure you select the complete prompt, and that the prompt is saved in the current file, and the file is correctly written.'
+                    );
+                    return {
+                        metadata: {
+                            command: 'fix-gender-bias',
+                        },
+                    };
+                }
+                const genderFixResults = await fixGenderBias(tempPrompt);
+                // Render the results
+                stream.markdown('**🎯 Gender Bias Fix Results**:');
+                stream.markdown('\n\n');
+                this._processGenderBiasFixJSON(genderFixResults, stream);
+                return {
+                    metadata: { command: 'fix-gender-bias' },
+                };
+            }
+        }
+        if (this.savedPrompt) {
+            stream.markdown('Analyzing prompt saved for analysis...');
+
+            const genderFixResults = await fixGenderBias(this.savedPrompt!);
+            // Render the results
+            stream.markdown('**🎯 Gender Bias Fix Results**:');
+            stream.markdown('\n\n');
+            this._processGenderBiasFixJSON(genderFixResults, stream);
+            return { metadata: { command: 'fix-gender-bias' } };
+        } else {
+            if (editor) {
+                stream.markdown(
+                    'No prompt found saved and no text selected in active editor'
+                );
+                return {
+                    metadata: { command: 'fix-gender-bias' },
+                };
+            }
+            stream.markdown('No prompt found saved and no active editor');
+            return { metadata: { command: 'fix-gender-bias' } };
+        }
+    }
+    _processGenderBiasFixJSON(
+        genderFix: JSONSchemaObject | fixGenderBiasResult,
+        stream: vscode.ChatResponseStream
+    ) {
+        if ((genderFix as JSONSchemaObject).error) {
+            stream.markdown('Error: ');
+            stream.markdown((genderFix as JSONSchemaObject).error as string);
+            stream.markdown('\n\n');
+            return;
+        } else {
+            const genderFixRes = genderFix as fixGenderBiasResult;
+            // if more than 5 prompts are returned, show only the first 5
+            if (genderFixRes.prompts.length > 5) {
+                stream.markdown(
+                    'More than 5 prompts were generated, showing only the first 5'
+                );
+                stream.markdown('\n\n');
+            }
+            stream.markdown('**📝 Fixed Prompts:**');
+            stream.markdown('\n\n');
+            for (let i = 0; i < 5; i++) {
+                stream.markdown(`**Prompt ${i + 1}**:`);
+                stream.markdown('\n\n');
+                stream.markdown(`${genderFixRes.prompts}`);
+                stream.markdown('\n\n');
+                // if unresolved Keys are found, show them
+                if (genderFixRes.unresolvedKeys) {
+                    stream.markdown(
+                        ' We were unable to re-insert the following keys into the prompt:'
+                    );
+                    stream.markdown('\n\n');
+                    stream.markdown('**📝  Unresolved Keys :**');
+                    stream.markdown('\n\n');
+                    for (let key in genderFixRes.unresolvedKeys) {
+                        stream.markdown(`${key}`);
+                        stream.markdown(' ; ');
+                    }
+                }
+            }
+        }
+    }
+
     private _handleSelectSystemPrompt(
         request: vscode.ChatRequest,
         context: vscode.ChatContext,

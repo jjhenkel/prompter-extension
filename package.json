@@ -33,6 +33,10 @@
                         "description": "Find prompts in your workspace"
                     },
                     {
+                        "name": "fix-gender-bias",
+                        "description": "Attempt to fix gender bias and bias potential in a prompt"
+                    },
+                    {
                         "name": "analyze-bias",
                         "description": "Analyze bias for a selected prompt"
                     },
