@@ -1143,7 +1143,12 @@ export class PrompterParticipant {
                                     prompts[i].endLocation.character >=
                                         endLocation.character))
                         ) {
-                            let promptToReturn = structuredClone(prompts[i]);
+                            let promptToReturn = Object.assign(
+                                Object.create(
+                                    Object.getPrototypeOf(prompts[i])
+                                ),
+                                prompts[i]
+                            );
                             if (this.customSystemPrompt) {
                                 promptToReturn.selectedSystemPromptText =
                                     this.customSystemPrompt;
@@ -1156,7 +1161,10 @@ export class PrompterParticipant {
                 // find the prompt that matches the prompt text
                 for (let i = 0; i < prompts.length; i++) {
                     if (prompts[i].rawText === promptText) {
-                        let promptToReturn = structuredClone(prompts[i]);
+                        let promptToReturn = Object.assign(
+                            Object.create(Object.getPrototypeOf(prompts[i])),
+                            prompts[i]
+                        );
                         if (this.customSystemPrompt) {
                             promptToReturn.selectedSystemPromptText =
                                 this.customSystemPrompt;
@@ -1168,7 +1176,10 @@ export class PrompterParticipant {
                 // if no prompt is found return the first prompt that contains the prompt text
                 for (let i = 0; i < prompts.length; i++) {
                     if (prompts[i].rawText.includes(promptText)) {
-                        let promptToReturn = structuredClone(prompts[i]);
+                        let promptToReturn = Object.assign(
+                            Object.create(Object.getPrototypeOf(prompts[i])),
+                            prompts[i]
+                        );
                         if (this.customSystemPrompt) {
                             promptToReturn.selectedSystemPromptText =
                                 this.customSystemPrompt;
@@ -1186,7 +1197,12 @@ export class PrompterParticipant {
                         maxMatchIndex = i;
                     }
                 }
-                let promptToReturn = structuredClone(prompts[maxMatchIndex]);
+                let promptToReturn = Object.assign(
+                    Object.create(
+                        Object.getPrototypeOf(prompts[maxMatchIndex])
+                    ),
+                    prompts[maxMatchIndex]
+                );
                 if (this.customSystemPrompt) {
                     promptToReturn.selectedSystemPromptText =
                         this.customSystemPrompt;
