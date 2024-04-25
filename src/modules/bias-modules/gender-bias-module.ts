@@ -1,15 +1,23 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as utils from '../LLMUtils.js';
-import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 
 import PromptJson from './gender_prompt_4.json';
 import { PromptMetadata } from '../prompt-finder/index.js';
 import { patchHoles } from '../prompt-finder/hole-patching.js';
 
+//  json data fields: gender_biased: bool    may_cause_gender_bias: bool      reasoning: string
+
+export type GenderBiasResult = {
+    error?: string;
+    gender_biased?: boolean;
+    may_cause_gender_bias?: boolean;
+    reasoning?: string;
+};
+
 async function checkGenderBias(
     inputPrompt: PromptMetadata,
     useSystemPrompt: boolean = true
-): Promise<JSONSchemaObject> {
+): Promise<GenderBiasResult> {
     // load prompt from json file
     // extract prompt from json file
     var userPromptText: string = PromptJson.user_prompt;
