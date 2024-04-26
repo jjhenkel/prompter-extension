@@ -187,7 +187,7 @@ export async function sendChatRequestAndGetDirectResponse(
         Object.fromEntries(filteredOptions);
 
     // if backend is Azure or OpenAI
-    console.log(organizedMessages[1].content);
+    // console.log(organizedMessages[1].content);
     if (client instanceof OpenAI) {
         const response = await retryExponential(async () => {
             if (client && client instanceof OpenAI) {
