@@ -1,9 +1,9 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as utils from '../LLMUtils.js';
-
-import PromptJson from './gender_prompt_4.json';
+import * as PromptUtils from '../PromptUtils.js';
 import { PromptMetadata } from '../prompt-finder/index.js';
 import { patchHoles } from '../prompt-finder/hole-patching.js';
+import path from 'path';
 
 //  json data fields: gender_biased: bool    may_cause_gender_bias: bool      reasoning: string
 
@@ -18,12 +18,28 @@ async function checkGenderBias(
     inputPrompt: PromptMetadata,
     useSystemPrompt: boolean = true
 ): Promise<GenderBiasResult> {
-    // load prompt from json file
-    // extract prompt from json file
-    var userPromptText: string = PromptJson.user_prompt;
-    const systemPromptText: string = PromptJson.system_prompt;
+    // load prompt from yaml file
+    let serializedPrompts = PromptUtils.loadPromptsFromYaml(
+        path.resolve(__dirname, 'gender_prompt_4.yaml')
+    );
+
+    let userPromptObject = PromptUtils.getPromptsOfRole(
+        serializedPrompts,
+        'user'
+    )[0];
+    const systemPromptText = PromptUtils.getPromptsOfRole(
+        serializedPrompts,
+        'system'
+    )[0].content;
+
+    var userPromptText: string = userPromptObject.content;
+
     // inject text variables into prompt
-    const variables_to_inject = PromptJson.injected_variables;
+    const variables_to_inject = userPromptObject.injectedVariables;
+    if (variables_to_inject === undefined || variables_to_inject.length < 1) {
+        console.error('Insufficient variables to inject in the prompt');
+        return { error: 'Insufficient variables to inject in the prompt' };
+    }
     userPromptText = userPromptText.replaceAll('__', '\n');
     let patchedPrompt = inputPrompt.normalizedText;
     // if the prompt has undefined template values, perform hole patching
