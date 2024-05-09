@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { PromptMetadata, findPrompts } from '../modules/prompt-finder';
-import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import checkGenderBias, {
+    GenderBiasResult,
+} from '../modules/bias-modules/gender-bias-module';
 import suggestImprovement from '../modules/optimize-modules/suggest-by-rules-module';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import { patchHoles } from '../modules/prompt-finder/hole-patching';
@@ -689,10 +691,8 @@ export class PrompterParticipant {
                     stream.markdown('\n\n');
                     const biasAnalysis = await checkGenderBias(tempPrompt);
                     // Render the results
-                    stream.markdown('**📊 Bias Analysis Results**:');
-                    stream.markdown('\n\n');
                     stream.markdown(
-                        this.handleGenderBiasAnalysis(biasAnalysis)
+                        this._handleGenderBiasAnalysis(biasAnalysis)
                     );
                     return { metadata: { command: 'analyze-bias' } };
                 }
@@ -705,7 +705,7 @@ export class PrompterParticipant {
             // Render the results
             stream.markdown('**📊 Bias Analysis Results**:');
             stream.markdown('\n\n');
-            stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
+            stream.markdown(this._handleGenderBiasAnalysis(biasAnalysis));
             return { metadata: { command: 'analyze-bias' } };
         } else {
             if (editor) {
@@ -719,13 +719,17 @@ export class PrompterParticipant {
         }
     }
 
-    private handleGenderBiasAnalysis(json: JSONSchemaObject): string {
+    private _handleGenderBiasAnalysis(result: GenderBiasResult): string {
         // get gender_bias value
+        if (result.error) {
+            return `Error: ${result.error}`;
+        }
         let return_message = '';
-        const genderBias: boolean = json['gender_bias'] as boolean;
-        const genderBiasPotential: boolean = json[
-            'may_cause_gender_bias'
-        ] as boolean;
+        return_message += '**📊 Bias Analysis Results**:';
+        return_message += '\n\n';
+        const genderBias: boolean = result.gender_biased as boolean;
+        const genderBiasPotential: boolean =
+            result.may_cause_gender_bias as boolean;
         if (genderBias && genderBiasPotential) {
             return_message +=
                 'This message is potentially gender biased and may cause gender biased responses.';
@@ -739,9 +743,9 @@ export class PrompterParticipant {
             return_message += '\n\n';
         }
         if (!genderBias && !genderBiasPotential) {
-            if (json['error']) {
+            if (result['error']) {
                 return_message += 'Error: ';
-                return_message += json['error'];
+                return_message += result['error'];
                 return_message += '\n\n';
                 return return_message;
             }
@@ -753,7 +757,7 @@ export class PrompterParticipant {
             return return_message;
         }
         return_message += ' **Explanation:** ';
-        return_message = return_message.concat(json['reasoning'] as string);
+        return_message = return_message.concat(result['reasoning'] as string);
         return_message += '\n \n';
         return return_message;
     }
