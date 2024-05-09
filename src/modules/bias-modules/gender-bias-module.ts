@@ -1,20 +1,45 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as utils from '../LLMUtils.js';
-import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
-
-import PromptJson from './gender_prompt_4.json';
+import * as PromptUtils from '../PromptUtils.js';
 import { PromptMetadata } from '../prompt-finder/index.js';
 import { patchHoles } from '../prompt-finder/hole-patching.js';
+import path from 'path';
+
+//  json data fields: gender_biased: bool    may_cause_gender_bias: bool      reasoning: string
+
+export type GenderBiasResult = {
+    error?: string;
+    gender_biased?: boolean;
+    may_cause_gender_bias?: boolean;
+    reasoning?: string;
+};
 
 async function checkGenderBias(
-    inputPrompt: PromptMetadata
-): Promise<JSONSchemaObject> {
-    // load prompt from json file
-    // extract prompt from json file
-    var userPromptText: string = PromptJson.user_prompt;
-    const systemPromptText: string = PromptJson.system_prompt;
+    inputPrompt: PromptMetadata,
+    useSystemPrompt: boolean = true
+): Promise<GenderBiasResult> {
+    // load prompt from yaml file
+    let serializedPrompts = PromptUtils.loadPromptsFromYaml(
+        path.resolve(__dirname, 'gender_prompt_4.yaml')
+    );
+
+    let userPromptObject = PromptUtils.getPromptsOfRole(
+        serializedPrompts,
+        'user'
+    )[0];
+    const systemPromptText = PromptUtils.getPromptsOfRole(
+        serializedPrompts,
+        'system'
+    )[0].content;
+
+    var userPromptText: string = userPromptObject.content;
+
     // inject text variables into prompt
-    const variables_to_inject = PromptJson.injected_variables;
+    const variables_to_inject = userPromptObject.injectedVariables;
+    if (variables_to_inject === undefined || variables_to_inject.length < 1) {
+        console.error('Insufficient variables to inject in the prompt');
+        return { error: 'Insufficient variables to inject in the prompt' };
+    }
     userPromptText = userPromptText.replaceAll('__', '\n');
     let patchedPrompt = inputPrompt.normalizedText;
     // if the prompt has undefined template values, perform hole patching
@@ -25,17 +50,30 @@ async function checkGenderBias(
     }
 
     let userPrompt = userPromptText;
-    for (const variable in variables_to_inject) {
-        let value = '{' + variables_to_inject[variable] + '}';
-        userPrompt = userPrompt.replaceAll(value, patchedPrompt);
+    // for (const variable in variables_to_inject) {
+    let value = '{{' + variables_to_inject[0] + '}}'; // prompt_text
+    userPrompt = userPrompt.replaceAll(value, patchedPrompt);
+    value = '{{' + variables_to_inject[1] + '}}'; // system_prompt
+    if (
+        useSystemPrompt === true &&
+        inputPrompt.selectedSystemPromptText !== undefined &&
+        inputPrompt.selectedSystemPromptText !== ''
+    ) {
+        userPrompt = userPrompt.replaceAll(
+            value,
+            'To enhance your analysis, use the following system prompt for context:' +
+                inputPrompt.selectedSystemPromptText
+        );
+    } else {
+        userPrompt = userPrompt.replaceAll(value, '');
     }
     // send the prompt to azure openai using client
-    // const deploymentId = 'gpt-35-turbo';
     const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPromptText },
         { role: 'user', content: userPrompt },
     ];
-    // console.log(messages);
+
+    console.log(messages);
     // convert messages list to chat request
     let client = utils.getClient();
     // console.log(client);
@@ -43,11 +81,17 @@ async function checkGenderBias(
         console.error('Client is undefined');
         return { error: 'Issue during OpenAI configuration' };
     } else {
-        const result = await utils.sendChatRequest(messages, {
-            model: utils.GPTModel.GPT3_5Turbo,
-            temperature: 0.3,
-            seed: 42,
-        });
+        const result = await utils.sendChatRequest(
+            messages,
+            {
+                model: utils.GPTModel.GPT3_5Turbo,
+                temperature: 0.3,
+                seed: 42,
+            },
+            undefined,
+            true,
+            true
+        );
         // const response = await client.chat.completions.create({
         //     messages: messages,
         //     model: deploymentId,

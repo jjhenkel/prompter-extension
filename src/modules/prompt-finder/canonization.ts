@@ -7,6 +7,7 @@ import { vsprintf } from 'sprintf-js';
 import { GPTModel, sendChatRequest } from '../LLMUtils';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
+import * as vscode from 'vscode';
 export async function canonizeWithTreeSitterANDCopilotGPT(
     sourceFile: string,
     node: Parser.SyntaxNode | null,
@@ -17,11 +18,42 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
         node,
         parser
     );
-    const [finalResponse, templateHoles] = await canonizeWithLLM(
+
+    let [finalResponse, templateHoles] = await canonizeWithLLM(
         sourceFile,
         node,
         normalizedResponse
     );
+    try {
+        // fallback to local parsing in case LLM fails to generate a proper response
+        const json_error = JSON.parse(finalResponse);
+        if (json_error.error) {
+            console.log(
+                'Error in canonizeWithTreeSitterANDCopilotGPT, trying LLM only parsing'
+            );
+            console.log(json_error.error_message);
+        }
+        //canonizeOnlyWithLLM
+        [finalResponse, templateHoles] = await canonizeWithLLM(
+            sourceFile,
+            node
+        );
+        try {
+            const json_error = JSON.parse(finalResponse);
+            if (json_error.error) {
+                console.log(
+                    'Error in canonizeWithLLMOnly, trying local only parsing'
+                );
+                console.log(json_error.error_message);
+            }
+
+            [finalResponse, templateHoles] =
+                completeCanonizePromptWithTreeSitter(sourceFile, node, parser);
+        } catch (e) {}
+    } catch (e) {
+        // NOT an error, just a normal flow
+    }
+
     return [finalResponse, templateHoles];
 }
 
@@ -56,6 +88,7 @@ You task is to read this and convert it into a normalized string form.
 3. Produce as output a single string where any template holes have been normalized to a placeholder like {{variable}}.
 4. Any variable that can't be resolved should be converted to a placeholder like {{variable}}.
 5. Output only the normalized string, nothing else.
+6. If you encounter any problems fulfilling a request, you will start your response with \" I am sorry \"
             `.trim(),
         },
         {
@@ -93,11 +126,17 @@ Here is the normalized string:
         },
     ];
 
-    const normalizedResponse = await sendChatRequest(messages, {
-        temperature: 0.0,
-        stop: ['```'],
-        model: GPTModel.GPT3_5Turbo,
-    });
+    const normalizedResponse = await sendChatRequest(
+        messages,
+        {
+            temperature: 0.0,
+            stop: ['```'],
+            model: GPTModel.GPT3_5Turbo,
+        },
+        undefined,
+        false,
+        false
+    );
 
     console.log(normalizedResponse);
 
@@ -140,7 +179,7 @@ Here is the normalized string:
     return [normalizedResponse, templateHoles];
 };
 
-export function canonizePromptWithTreeSitter(
+export function completeCanonizePromptWithTreeSitter(
     sourceFile: string,
     node: Parser.SyntaxNode | null,
     // extensionUri: vscode.Uri
@@ -173,6 +212,99 @@ export function canonizePromptWithTreeSitter(
                         startLocation: toVSCodePosition(child.startPosition),
                         endLocation: toVSCodePosition(child.endPosition),
                     } as PromptTemplateHole;
+                    return '{{' + identifier + '}}';
+                }
+            } else {
+                return child.text;
+            }
+        });
+
+        // if expression is modulo
+        if (node?.type === 'binary_operator' && node.children[1].type === '%') {
+            if (childrenValues) {
+                // return the modulo of the left and right values
+                return [
+                    vsprintf(childrenValues[0], childrenValues.slice(1)),
+                    templateHoles,
+                ];
+            }
+        }
+        let tempStr = childrenValues?.join('');
+        if (tempStr?.endsWith('+"')) {
+            // remove the last concatenation operator
+            tempStr = tempStr.slice(0, -2);
+        }
+        return ['"' + tempStr + '"' || '', templateHoles];
+    } catch (e) {
+        console.log(e);
+        return ['', {}];
+    }
+}
+
+export function canonizePromptWithTreeSitter(
+    sourceFile: string,
+    node: Parser.SyntaxNode | null,
+    // extensionUri: vscode.Uri
+    parser: Parser
+): [string, { [key: string]: PromptTemplateHole }] {
+    try {
+        let templateHoles: { [key: string]: PromptTemplateHole } = {};
+        const sourceFileURI = vscode.Uri.file(sourceFile);
+        const sourceFileContents = fs.readFileSync(
+            sourceFileURI.fsPath,
+            'utf8'
+        );
+        // console.log('File loaded');
+        const tree = parser.parse(sourceFileContents.toString());
+        // get the node's descendants recursively that are strings and identifiers
+        if (node?.type === 'string' && node.text.startsWith('"')) {
+            return [node.text.slice(1, -1), {}];
+        } else if (node?.type === 'identifier') {
+            const identifier = node.text;
+            const helper = new ASTHelper();
+            const value = helper._getIdentifierValue(identifier, tree);
+            if (value) {
+                return [value, {}];
+            } else {
+                templateHoles[identifier] = {
+                    name: identifier,
+                    inferredType: 'string',
+                    rawText: identifier.toString(),
+                    startLocation: toVSCodePosition(node.startPosition),
+                    endLocation: toVSCodePosition(node.endPosition),
+                } as PromptTemplateHole;
+                return ['"' + identifier + '"', templateHoles];
+            }
+        }
+        const children = node?.descendantsOfType([
+            'attribute',
+            'string_content',
+            'identifier',
+        ]);
+        // remove the identifier children that are contained in attributes
+        const filteredChildren = children?.filter((child) => {
+            if (child.type === 'identifier') {
+                return !child.parent?.type.includes('attribute');
+            }
+            return true;
+        });
+        // get the text of the children
+        const childrenValues = filteredChildren?.map((child) => {
+            if (child.type === 'identifier' || child.type === 'attribute') {
+                // try to find the value of the identifier in the source file
+                const identifier = child.text;
+                const helper = new ASTHelper();
+                const value = helper._getIdentifierValue(identifier, tree);
+                if (value) {
+                    return value;
+                } else {
+                    templateHoles[identifier] = {
+                        name: identifier,
+                        inferredType: 'string',
+                        rawText: identifier.toString(),
+                        startLocation: toVSCodePosition(child.startPosition),
+                        endLocation: toVSCodePosition(child.endPosition),
+                    } as PromptTemplateHole;
                     return '"+' + identifier + '+"';
                 }
             } else {
@@ -190,8 +322,12 @@ export function canonizePromptWithTreeSitter(
                 ];
             }
         }
-        // assume the default of joining for other cases (addition, redirection, fstring, etc.).
-        return ['"' + childrenValues?.join('') + '"' || '', templateHoles];
+        let tempStr = childrenValues?.join('');
+        if (tempStr?.endsWith('+"')) {
+            // remove the last concatenation operator
+            tempStr = tempStr.slice(0, -2);
+        }
+        return ['"' + tempStr + '"' || '', templateHoles];
     } catch (e) {
         console.log(e);
         return ['', {}];

@@ -67,6 +67,28 @@ suite('Prompt Injection Test Suite', () => {
         assert.strictEqual(result.poisoned_responses.length > 0, true);
     });
 
+    test('Simple Variable Injection With System Prompt Test on Vulnerable Prompt', async () => {
+        const path = vscode.Uri.joinPath(
+            extensionUri,
+            'src/test/Prompt Injection Test Samples/simple-vulnerable-and-system-prompt.py'
+        ).fsPath;
+        const contents = readFileSync(path, 'utf8');
+        let foundPrompts = await findPrompts(extensionUri, [
+            { contents: contents, path: path },
+        ]);
+        assert.ok(foundPrompts[0].selectedSystemPromptText !== undefined);
+
+        const result: any = await checkVariableInjection(foundPrompts[0]);
+        console.log(result);
+        assert.strictEqual(result.vulnerable, 'Yes');
+        assert.strictEqual(
+            result.poisoned_responses[0][0],
+            'prompt_focus_segment'
+        );
+        // assert that we received at least one poisoned response example
+        assert.strictEqual(result.poisoned_responses.length > 0, true);
+    });
+
     test('Simple Variable Injection Test on Safe Prompt', async () => {
         const path = vscode.Uri.joinPath(
             extensionUri,
