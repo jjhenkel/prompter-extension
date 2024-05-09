@@ -187,6 +187,7 @@ export async function sendChatRequestAndGetDirectResponse(
         Object.fromEntries(filteredOptions);
 
     // if backend is Azure or OpenAI
+    // console.log(organizedMessages[1].content);
     if (client instanceof OpenAI) {
         const response = await retryExponential(async () => {
             if (client && client instanceof OpenAI) {
@@ -321,7 +322,7 @@ export async function sendChatRequest(
                 );
             }
             if (cleanJsonOutput) {
-                result = cleanJson(result);
+                result = await cleanJson(result);
             }
             return result;
         } else {
@@ -350,7 +351,7 @@ export async function sendChatRequest(
                 );
             }
             if (cleanJsonOutput) {
-                completeResult = cleanJson(completeResult);
+                completeResult = await cleanJson(completeResult);
             }
             return completeResult;
         } else {
@@ -364,7 +365,7 @@ export async function sendChatRequest(
     }
 }
 
-export function cleanJson(result: any) {
+export async function cleanJson(result: any): Promise<string> {
     // find the first occurrence of '{'
     let first_occurrence = result.indexOf('{');
     //remove everything before the first occurrence
