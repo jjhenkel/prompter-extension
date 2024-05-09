@@ -4,7 +4,9 @@ import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import suggestImprovement from '../modules/optimize-modules/suggest-by-rules-module';
 import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import { patchHoles } from '../modules/prompt-finder/hole-patching';
-import checkVariableInjection from '../modules/injection-module/var-injection-module';
+import checkVariableInjection, {
+    VariableInjectionResult,
+} from '../modules/injection-module/var-injection-module';
 import path from 'path';
 import fs from 'fs';
 
@@ -757,15 +759,13 @@ export class PrompterParticipant {
     }
 
     private _processInjectionVulnerabilityAnalysisJSON(
-        json: JSONSchemaObject,
+        biasAnalysis: VariableInjectionResult,
         stream: vscode.ChatResponseStream
     ) {
         // var return_message = "";
-        const injectionVul = json['vulnerable'] as string;
+        const injectionVul = biasAnalysis.vulnerable!;
         // convert json array  to string array
-        const poisonedExamplesArray = json['poisoned_responses'] as Array<
-            [string, string]
-        >;
+        const poisonedExamplesArray = biasAnalysis.poisoned_responses!;
         const poisonedExamplesSet = Array.from(new Set(poisonedExamplesArray));
         if (injectionVul === 'Yes' || injectionVul === 'Maybe') {
             if (injectionVul === 'Yes') {
@@ -791,7 +791,7 @@ export class PrompterParticipant {
             }
 
             stream.markdown(
-                `**📈 Percentage of ${possibly} Vulnerable Variables:** ${((poisonedVariables.size / (json['total_variables_in_prompt'] as number)) * 100).toFixed(2)} `
+                `**📈 Percentage of ${possibly} Vulnerable Variables:** ${((poisonedVariables.size / biasAnalysis.total_variables_in_prompt!) * 100).toFixed(2)} `
             );
             stream.markdown('\n\n');
             // print the names of the variables that are vulnerable
@@ -804,7 +804,7 @@ export class PrompterParticipant {
 
             // calculate the percentage of successful attacks and show in :.2f format
             stream.markdown(
-                `**📈 Percentage of ${possibly} Successful Attacks:** ${((poisonedExamplesArray.length / (json['total_attempts'] as number)) * 100).toFixed(2)} `
+                `**📈 Percentage of ${possibly} Successful Attacks:** ${((poisonedExamplesArray.length / biasAnalysis.total_attempts!) * 100).toFixed(2)} `
             );
 
             stream.markdown('\n\n');
@@ -862,9 +862,9 @@ export class PrompterParticipant {
                 stream.markdown('\n\n');
             }
         } else {
-            if (json['error']) {
+            if (biasAnalysis.error) {
                 stream.markdown('Error: ');
-                stream.markdown(json['error'] as string);
+                stream.markdown(biasAnalysis.error);
                 stream.markdown('\n\n');
             } else {
                 stream.markdown(
