@@ -263,7 +263,7 @@ async function processInjection(
                 try {
                     const json = JSON.parse(injectedResult);
                     // if it's a JSON
-                    if (json.error && !json.error.contains('I am sorry')) {
+                    if (json.error && !json.error.includes('I am sorry')) {
                         // attack detected
                         if (json.error_message) {
                             poisoned_responses.push([
@@ -271,13 +271,6 @@ async function processInjection(
                                 JSON.stringify(json.error_message),
                             ]);
                         }
-                    } else {
-                        // if it's not a JSON
-                        // attack detected
-                        poisoned_responses.push([
-                            injectionPointVariable,
-                            JSON.stringify(injectedResult),
-                        ]);
                     }
                 } catch (e) {
                     // not a JSON
