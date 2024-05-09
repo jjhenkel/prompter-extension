@@ -1,9 +1,10 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as utils from '../LLMUtils.js';
+import * as PromptUtils from '../PromptUtils.js';
 import * as vscode from 'vscode';
 import { PromptMetadata, PromptTemplateHole } from './index.js';
 import * as fs from 'fs';
-import HoleFillingPromptJson from './hole-patching-prompt.json';
+// import HoleFillingPromptJson from './hole-patching-prompt.json';
 import path from 'path';
 
 const modelType = utils.GPTModel.GPT3_5Turbo;
@@ -34,13 +35,42 @@ export async function patchHoles(
     }
 }
 
+export function unpatchHoles(
+    newPromptString: string,
+    promptObject: PromptMetadata
+): [string, string[]] {
+    let unmatchedKeys = [];
+    for (let key in promptObject.templateValues) {
+        let value = promptObject.templateValues[key].defaultValue;
+        if (value && newPromptString.includes(value)) {
+            newPromptString = newPromptString.replace(value, '{{' + key + '}}');
+        } else {
+            console.log('Error: Could not find value to unpatch');
+            unmatchedKeys.push(key);
+        }
+    }
+    return [newPromptString, unmatchedKeys];
+}
+
 async function _patchValue(
     prompt: PromptMetadata,
     templateValue: PromptTemplateHole,
     useSystemPrompt: boolean
 ): Promise<patchedVariable> {
-    let userPromptToSend = HoleFillingPromptJson.user_prompt;
-    let systemPromptToSend = HoleFillingPromptJson.system_prompt;
+    // load prompt from yaml file
+    let serializedPrompts = PromptUtils.loadPromptsFromYaml(
+        path.resolve(__dirname, 'hole-patching-prompt.yaml')
+    );
+
+    let userPromptToSendObject = PromptUtils.getPromptsOfRole(
+        serializedPrompts,
+        'user'
+    )[0];
+    let userPromptToSend = userPromptToSendObject.content;
+    let systemPromptToSend = PromptUtils.getPromptsOfRole(
+        serializedPrompts,
+        'system'
+    )[0].content;
     let promptWithHoles = prompt.normalizedText;
     // fill in the holes in the prompt where default values are ready : this should make the default values more consistent with each other
     for (let key in prompt.templateValues) {
@@ -49,13 +79,21 @@ async function _patchValue(
             promptWithHoles = promptWithHoles.replace('{{' + key + '}}', value);
         }
     }
+    if (userPromptToSendObject.injectedVariables === undefined) {
+        console.log('Error: Injected variables not found in prompt');
+        return {
+            name: templateValue.name,
+            value: '',
+            error: 'Injected variables not found in prompt',
+        };
+    }
     userPromptToSend = userPromptToSend.replace(
-        '{{' + HoleFillingPromptJson.injected_variables[0] + '}}',
+        '{{' + userPromptToSendObject.injectedVariables[0] + '}}',
         promptWithHoles
     );
     let variableName = templateValue.name;
     userPromptToSend = userPromptToSend.replace(
-        '{{' + HoleFillingPromptJson.injected_variables[1] + '}}',
+        '{{' + userPromptToSendObject.injectedVariables[1] + '}}',
         variableName
     );
     // load source code file contents from file
@@ -68,7 +106,7 @@ async function _patchValue(
 
     // inject source code file contents into the prompt
     let tempUserPromptToSend = userPromptToSend.replace(
-        '{{' + HoleFillingPromptJson.injected_variables[2] + '}}',
+        '{{' + userPromptToSendObject.injectedVariables[2] + '}}',
         sourceCodeFileContents
     );
     //TODO add support for different lengths depending on LLM used
@@ -97,7 +135,7 @@ async function _patchValue(
             sourceCodeToInject = prompt.rawTextOfParentCall;
         }
         tempUserPromptToSend = tempUserPromptToSend.replace(
-            '{{' + HoleFillingPromptJson.injected_variables[2] + '}}',
+            '{{' + userPromptToSendObject.injectedVariables[2] + '}}',
             sourceCodeToInject
         );
         if (
@@ -122,12 +160,12 @@ async function _patchValue(
             ' .\n To better inform your guess, you should use the following system prompt for guidance context: \n ' +
             prompt.selectedSystemPromptText;
         userPromptToSend = userPromptToSend.replace(
-            '{{' + HoleFillingPromptJson.injected_variables[3] + '}}',
+            '{{' + userPromptToSendObject.injectedVariables[3] + '}}',
             systemPromptCmd
         );
     } else {
         userPromptToSend = userPromptToSend.replace(
-            '{{' + HoleFillingPromptJson.injected_variables[3] + '}}',
+            '{{' + userPromptToSendObject.injectedVariables[3] + '}}',
             ''
         );
     }
