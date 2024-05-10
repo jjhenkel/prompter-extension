@@ -9,6 +9,9 @@ import { patchHoles } from '../modules/prompt-finder/hole-patching';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
 import path from 'path';
 import fs from 'fs';
+import checkSexualityBias, {
+    SexualityBiasResult,
+} from '../modules/bias-modules/sexuality-bias-module';
 
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
@@ -85,6 +88,11 @@ export class PrompterParticipant {
                         prompt: 'analyze-gender-bias',
                         command: 'analyze-gender-bias',
                         label: 'Analyze Gender bias for a selected prompt',
+                    },
+                    {
+                        prompt: 'analyze-sexuality-bias',
+                        command: 'analyze-sexuality-bias',
+                        label: 'Analyze Sexuality bias for a selected prompt',
                     },
                     {
                         prompt: 'suggest-by-rules',
@@ -173,6 +181,15 @@ export class PrompterParticipant {
                     token
                 );
                 return { metadata: { command: 'analyze-gender-bias' } };
+            }
+            case 'analyze-sexuality-bias': {
+                await this._handleAnalyzeSexualityBias(
+                    request,
+                    context,
+                    stream,
+                    token
+                );
+                return { metadata: { command: 'analyze-sexuality-bias' } };
             }
             case 'suggest-by-rules': {
                 await this._handleSuggestByRules(
@@ -527,6 +544,7 @@ export class PrompterParticipant {
             Here are the sub-commands I support:
               - \`/find-prompts\`: Find prompts in your workspace
               - \`/analyze-gender-bias\`: Analyze bias for a selected prompt
+              - \`/analyze-sexuality-bias\`: Analyze bias for a selected prompt
               - \`/help\`: Show this help message
         `)
         );
@@ -754,6 +772,128 @@ export class PrompterParticipant {
             }
             return_message +=
                 'This message is  likely not gender biased, and will probably not cause gender biased responses';
+            return_message += '\n\n';
+            return_message += '🎉🎉🎉';
+            return_message += '\n\n';
+            return return_message;
+        }
+        return_message += ' **Explanation:** ';
+        return_message = return_message.concat(result['reasoning'] as string);
+        return_message += '\n \n';
+        return return_message;
+    }
+
+    private async _handleAnalyzeSexualityBias(
+        request: vscode.ChatRequest,
+        context: vscode.ChatContext,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken
+    ) {
+        stream.markdown(
+            'This module will attempt to analyze the sexuality bias of the selected prompts.'
+        );
+        stream.markdown('\n\n');
+        stream.markdown(
+            'It will default to using the text selected in the editor as a prompt.'
+        );
+        stream.markdown('\n\n');
+        stream.markdown(
+            'If no text is selected, it will default to using the prompt saved internally via the find prompts command.'
+        );
+        stream.markdown('\n\n');
+        // check if text is selected
+        const editor = vscode.window.activeTextEditor;
+        let tempPrompt: PromptMetadata | undefined = undefined;
+        if (editor) {
+            const selectedText = editor.document.getText(editor.selection);
+            if (selectedText) {
+                const startLocation =
+                    vscode.window.activeTextEditor?.selection.start;
+                const endLocation =
+                    vscode.window.activeTextEditor?.selection.end;
+
+                stream.markdown(
+                    'Parsing selected text and looking for corresponding prompt...'
+                );
+                stream.markdown('\n\n');
+                tempPrompt = await this._findCorrespondingPromptObject(
+                    selectedText,
+                    startLocation,
+                    endLocation
+                );
+
+                if (!tempPrompt) {
+                    stream.markdown(
+                        'No corresponding prompt found in the current file, make sure you select the complete prompt, and that the prompt is saved in the current file, and the file is correctly written.'
+                    );
+                    stream.markdown('\n\n');
+                    stream.markdown(
+                        ' Will attempt to parse the saved prompt instead'
+                    );
+                } else {
+                    stream.markdown('Analyzing selected text...');
+                    stream.markdown('\n\n');
+                    const biasAnalysis = await checkSexualityBias(tempPrompt);
+                    // Render the results
+                    stream.markdown(
+                        this._handleSexualityBiasAnalysis(biasAnalysis)
+                    );
+                    return { metadata: { command: 'analyze-sexuality-bias' } };
+                }
+            }
+        }
+        const prompt = this.savedPrompt;
+        if (prompt !== undefined) {
+            stream.markdown('Analyzing prompt saved for analysis...');
+            const biasAnalysis = await checkSexualityBias(prompt);
+            // Render the results
+            stream.markdown('**📊  Sexuality Bias Analysis Results**:');
+            stream.markdown('\n\n');
+            stream.markdown(this._handleSexualityBiasAnalysis(biasAnalysis));
+            return { metadata: { command: 'analyze-sexuality-bias' } };
+        } else {
+            if (editor) {
+                stream.markdown(
+                    'No prompt found saved and no text selected in active editor'
+                );
+                return { metadata: { command: 'analyze-sexuality-bias' } };
+            }
+            stream.markdown('No prompt found saved and no active editor');
+            return { metadata: { command: 'analyze-sexuality-bias' } };
+        }
+    }
+
+    private _handleSexualityBiasAnalysis(result: SexualityBiasResult): string {
+        if (result.error) {
+            return `Error: ${result.error}`;
+        }
+        let return_message = '';
+        return_message += '**📊 Sexuality Bias Analysis Results**:';
+        return_message += '\n\n';
+        const sexualityBias: boolean = result.sexuality_biased as boolean;
+        const sexualityBiasPotential: boolean =
+            result.may_cause_sexuality_bias as boolean;
+        if (sexualityBias && sexualityBiasPotential) {
+            return_message +=
+                'This message is potentially sexuality biased and may cause sexuality biased responses.';
+            return_message += '\n\n';
+        } else if (sexualityBias) {
+            return_message += 'This message is potentially sexuality biased.';
+            return_message += '\n\n';
+        } else if (sexualityBiasPotential) {
+            return_message +=
+                'This message is likely not sexuality biased, but may cause sexuality biased responses';
+            return_message += '\n\n';
+        }
+        if (!sexualityBias && !sexualityBiasPotential) {
+            if (result['error']) {
+                return_message += 'Error: ';
+                return_message += result['error'];
+                return_message += '\n\n';
+                return return_message;
+            }
+            return_message +=
+                'This message is  likely not sexuality biased, and will probably not cause sexuality biased responses';
             return_message += '\n\n';
             return_message += '🎉🎉🎉';
             return_message += '\n\n';

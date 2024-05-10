@@ -37,6 +37,10 @@
                         "description": "Analyze gender bias for a selected prompt"
                     },
                     {
+                        "name": "analyze-sexuality-bias",
+                        "description": "Analyze sexuality bias for a selected prompt"
+                    },
+                    {
                         "name": "analyze-injection-vulnerability",
                         "description": "Analyze injection vulnerability of a selected prompt"
                     },
