@@ -82,9 +82,9 @@ export class PrompterParticipant {
                         label: 'Select a system prompt to use for the different analyses on the saved prompt',
                     },
                     {
-                        prompt: 'analyze-bias',
-                        command: 'analyze-bias',
-                        label: 'Analyze bias for a selected prompt',
+                        prompt: 'analyze-gender-bias',
+                        command: 'analyze-gender-bias',
+                        label: 'Analyze Gender bias for a selected prompt',
                     },
                     {
                         prompt: 'suggest-by-rules',
@@ -165,9 +165,14 @@ export class PrompterParticipant {
                 await this._handleHelp(request, context, stream, token);
                 return { metadata: { command: 'help' } };
             }
-            case 'analyze-bias': {
-                await this._handleAnalyzeBias(request, context, stream, token);
-                return { metadata: { command: 'analyze-bias' } };
+            case 'analyze-gender-bias': {
+                await this._handleAnalyzeGenderBias(
+                    request,
+                    context,
+                    stream,
+                    token
+                );
+                return { metadata: { command: 'analyze-gender-bias' } };
             }
             case 'suggest-by-rules': {
                 await this._handleSuggestByRules(
@@ -521,7 +526,7 @@ export class PrompterParticipant {
             
             Here are the sub-commands I support:
               - \`/find-prompts\`: Find prompts in your workspace
-              - \`/analyze-bias\`: Analyze bias for a selected prompt
+              - \`/analyze-gender-bias\`: Analyze bias for a selected prompt
               - \`/help\`: Show this help message
         `)
         );
@@ -637,7 +642,7 @@ export class PrompterParticipant {
         }
     }
 
-    private async _handleAnalyzeBias(
+    private async _handleAnalyzeGenderBias(
         request: vscode.ChatRequest,
         context: vscode.ChatContext,
         stream: vscode.ChatResponseStream,
@@ -692,7 +697,7 @@ export class PrompterParticipant {
                     stream.markdown(
                         this._handleGenderBiasAnalysis(biasAnalysis)
                     );
-                    return { metadata: { command: 'analyze-bias' } };
+                    return { metadata: { command: 'analyze-gender-bias' } };
                 }
             }
         }
@@ -704,16 +709,16 @@ export class PrompterParticipant {
             stream.markdown('**📊 Bias Analysis Results**:');
             stream.markdown('\n\n');
             stream.markdown(this._handleGenderBiasAnalysis(biasAnalysis));
-            return { metadata: { command: 'analyze-bias' } };
+            return { metadata: { command: 'analyze-gender-bias' } };
         } else {
             if (editor) {
                 stream.markdown(
                     'No prompt found saved and no text selected in active editor'
                 );
-                return { metadata: { command: 'analyze-bias' } };
+                return { metadata: { command: 'analyze-gender-bias' } };
             }
             stream.markdown('No prompt found saved and no active editor');
-            return { metadata: { command: 'analyze-bias' } };
+            return { metadata: { command: 'analyze-gender-bias' } };
         }
     }
 
