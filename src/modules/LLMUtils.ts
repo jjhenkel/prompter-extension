@@ -261,9 +261,9 @@ export async function sendChatRequestAndGetDirectResponse(
                     'LLM failed to generate an appropriate response, and I am sorry was returned'
                 );
                 return (
-                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
-                    completeResult +
-                    '"}'
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": ' +
+                    JSON.stringify(completeResult) +
+                    '}'
                 );
             }
             return completeResult;
@@ -316,9 +316,9 @@ export async function sendChatRequest(
                 // 'LLM failed to generate an appropriate response, and I am sorry was returned'
                 // );
                 return (
-                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
-                    result +
-                    '"}'
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": ' +
+                    JSON.stringify(result) +
+                    '}'
                 );
             }
             if (cleanJsonOutput) {
@@ -345,9 +345,9 @@ export async function sendChatRequest(
                     'LLM failed to generate an appropriate response, and I am sorry was returned'
                 );
                 return (
-                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
-                    completeResult +
-                    '"}'
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": ' +
+                    JSON.stringify(completeResult) +
+                    '}'
                 );
             }
             if (cleanJsonOutput) {
