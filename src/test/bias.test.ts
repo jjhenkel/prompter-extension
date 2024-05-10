@@ -4,7 +4,7 @@ import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import { findPrompts } from '../modules/prompt-finder';
 import * as vscode from 'vscode';
 import { Backend, setBackend } from '../modules/LLMUtils';
-import checkRaceBias from '../modules/bias-modules/race-bias-module';
+import checkSexualityBias from '../modules/bias-modules/sexuality-bias-module';
 const extensionUri = vscode.Uri.parse(
     __dirname.split('\\').slice(0, -2).join('/')
 );
@@ -85,49 +85,50 @@ suite('Bias Test Suite', () => {
             assert.strictEqual(result.gender_bias, true);
         });
     });
-    suite('Race Bias Test Suite', () => {
-        test('Simple Clear Race Bias Test', async () => {
+
+    suite('Sexuality Bias Test Suite', () => {
+        test('Simple Clear Sexuality Bias Test', async () => {
             const path = vscode.Uri.joinPath(
                 extensionUri,
-                'src/test/Bias Test Samples/Race Bias Test Samples/simple-test-is-race-biased.py'
+                'src/test/Bias Test Samples/Sexuality Bias Test Samples/simple-test-is-sexuality-biased.py'
             ).fsPath;
             const text = readFileSync(path, 'utf8');
             const discoveredPrompts = await findPrompts(extensionUri, [
                 { contents: text, path: path },
             ]);
-            const result: any = await checkRaceBias(discoveredPrompts[0]);
-            console.log(result);
-            assert.strictEqual(result.may_cause_race_bias, true);
-            assert.strictEqual(result.race_bias, true);
+            const result: any = await checkSexualityBias(discoveredPrompts[0]);
+            console.log(JSON.stringify(result));
+            assert.strictEqual(result.may_cause_sexuality_bias, true);
+            assert.strictEqual(result.sexuality_bias, true);
         });
 
-        test('Simple Possible Race Bias Test', async () => {
+        test('Simple Possible Sexuality Bias Test', async () => {
             const path = vscode.Uri.joinPath(
                 extensionUri,
-                'src/test/Bias Test Samples/Race Bias Test Samples/simple-test-maybe-race-biased.py'
+                'src/test/Bias Test Samples/Sexuality Bias Test Samples/simple-test-maybe-sexuality-biased.py'
             ).fsPath;
             const text = readFileSync(path, 'utf8');
             const discoveredPrompts = await findPrompts(extensionUri, [
                 { contents: text, path: path },
             ]);
-            const result: any = await checkRaceBias(discoveredPrompts[0]);
+            const result: any = await checkSexualityBias(discoveredPrompts[0]);
             console.log(JSON.stringify(result));
-            assert.strictEqual(result.may_cause_race_bias, true);
-            // assert.strictEqual(result.race_bias, false);
+            assert.strictEqual(result.may_cause_sexuality_bias, true);
+            // assert.strictEqual(result.sexuality_bias, false);
         });
-        test('Simple Race Bias Test with Hole Patching', async () => {
+        test('Simple Sexuality Bias Test with Hole Patching', async () => {
             const path = vscode.Uri.joinPath(
                 extensionUri,
-                'src/test/Bias Test Samples/Race Bias Test Samples/simple-test-race-biased-with-patching.py'
+                'src/test/Bias Test Samples/Sexuality Bias Test Samples/simple-test-sexuality-biased-with-patching.py'
             ).fsPath;
             const text = readFileSync(path, 'utf8');
             const discoveredPrompts = await findPrompts(extensionUri, [
                 { contents: text, path: path },
             ]);
-            const result: any = await checkRaceBias(discoveredPrompts[0]);
-            console.log(result);
-            assert.strictEqual(result.may_cause_race_bias, true);
-            assert.strictEqual(result.race_bias, true);
+            const result: any = await checkSexualityBias(discoveredPrompts[0]);
+            console.log(JSON.stringify(result));
+            assert.strictEqual(result.may_cause_sexuality_bias, true);
+            assert.strictEqual(result.sexuality_bias, true);
         });
     });
 });
