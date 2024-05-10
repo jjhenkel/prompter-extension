@@ -33,8 +33,8 @@
                         "description": "Find prompts in your workspace"
                     },
                     {
-                        "name": "analyze-bias",
-                        "description": "Analyze bias for a selected prompt"
+                        "name": "analyze-gender-bias",
+                        "description": "Analyze gender bias for a selected prompt"
                     },
                     {
                         "name": "analyze-injection-vulnerability",
