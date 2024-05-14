@@ -1,6 +1,6 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as LLMUtils from '../LLMUtils';
-import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
+// import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import PromptJson from './var-injection-prompt-1.json';
 import ComparisonWithLLMPromptJson from './comparison-prompt-2.json';
 import AttacksJson from './injections_attacks.json';
@@ -11,17 +11,26 @@ import { patchHoles } from '../prompt-finder/hole-patching';
 // var stemmer = require('natural').PorterStemmer;
 const modelType = LLMUtils.GPTModel.GPT3_5Turbo;
 
+export type VariableInjectionResult = {
+    error?: string;
+    vulnerable?: string;
+    poisoned_responses?: Array<[string, string]>;
+    total_attempts?: number;
+    total_variables_in_prompt?: number;
+};
+
 async function checkVariableInjection(
-    prompt: PromptMetadata
-): Promise<JSONSchemaObject> {
+    prompt: PromptMetadata,
+    useSystemPrompt: boolean = true
+): Promise<VariableInjectionResult> {
     // load prompt from json file
     // extract prompt from json file
-    const systemPromptText: string = PromptJson.system_prompt;
-    let userPromptText: string = PromptJson.user_prompt; // empty for now
+    let systemPromptText: string = PromptJson.system_prompt;
+    // let userPromptText: string = PromptJson.user_prompt; // empty for now
     // inject text variables into prompt
     // const variables_to_inject = PromptJson.injected_variables;
     // userPromptText = userPromptText.replaceAll("__","\n");
-    let userPrompt = prompt;
+    // let userPrompt = prompt;
     // let promptVariables: string[] | null = [];
     // extract variables in prompt by finding string + var + string or by finding {var} in string
     let defaultValuesPrompt = prompt.normalizedText;
@@ -31,6 +40,15 @@ async function checkVariableInjection(
             '{{' + key + '}}',
             prompt.templateValues[key].defaultValue
         );
+    }
+    if (useSystemPrompt) {
+        if (
+            prompt.selectedSystemPromptText !== undefined &&
+            prompt.selectedSystemPromptText !== null &&
+            prompt.selectedSystemPromptText !== ''
+        ) {
+            systemPromptText = prompt.selectedSystemPromptText;
+        }
     }
 
     let default_response: string = '';
@@ -80,8 +98,8 @@ async function checkVariableInjection(
         return { error: 'No response from Azure OpenAI' };
     }
     let attackTuples = AttacksJson.attacks;
-    let poisoned_responses: string[] = [];
-    let maybe_poisoned_responses: string[] = [];
+    let poisoned_responses_array: Array<[string, string]> = Array();
+    let maybe_poisoned_responses_array: Array<[string, string]> = Array();
     // sentiment analyzer definition
     // var analyzer = new SentimentAnalyzer('English', PorterStemmer, 'senticon');
     // let default_sentiment = analyzer.getSentiment(default_response.split(' '));
@@ -113,10 +131,12 @@ async function checkVariableInjection(
         let maybe_poisoned_responses_temp = attack_results[i][2];
         // let sentiment_differences_temp = attack_results[i][3];
         if (poisoned_responses_temp.length > 0) {
-            poisoned_responses.push(...poisoned_responses_temp);
+            poisoned_responses_array.push(...poisoned_responses_temp);
         }
         if (maybe_poisoned_responses_temp.length > 0) {
-            maybe_poisoned_responses.push(...maybe_poisoned_responses_temp);
+            maybe_poisoned_responses_array.push(
+                ...maybe_poisoned_responses_temp
+            );
         }
         // sentiment_differences.push(...sentiment_differences_temp);
     }
@@ -139,37 +159,30 @@ async function checkVariableInjection(
     //     }
     // }
 
-    if (poisoned_responses.length > 0) {
+    if (poisoned_responses_array.length > 0) {
         // convert poisoned responses to json array of string while cleaning string from any characters that might break json parsing
-        let poisoned_responses_json_string = JSON.stringify(poisoned_responses);
+        // let poisoned_responses_json_string = JSON.stringify(poisoned_responses_array);
+        let temp_response: VariableInjectionResult = {
+            vulnerable: 'Yes',
+            poisoned_responses: poisoned_responses_array,
+            total_attempts:
+                attackTuples.length * Object.keys(prompt.templateValues).length,
+            total_variables_in_prompt: Object.keys(prompt.templateValues)
+                .length,
+        };
+        return temp_response;
+    } else if (maybe_poisoned_responses_array.length > 0) {
+        // convert poisoned responses to json array of string while cleaning string from any characters that might break json parsing
 
-        const str =
-            '{"vulnerable": "Yes" , ' +
-            '"poisoned_responses": ' +
-            poisoned_responses_json_string +
-            ',' +
-            `"total_attempts": "${JSON.stringify(attackTuples.length * Object.keys(prompt.templateValues).length)}"` +
-            ',' +
-            `"total_variables_in_prompt": "${JSON.stringify(Object.keys(prompt.templateValues).length)}"` +
-            '}';
-        let temp_json = JSON.parse(str);
-        return temp_json;
-    } else if (maybe_poisoned_responses.length > 0) {
-        // convert poisoned responses to json array of string while cleaning string from any characters that might break json parsing
-        let maybe_poisoned_responses_json_string = JSON.stringify(
-            maybe_poisoned_responses
-        );
-        const str =
-            '{"vulnerable": "Maybe" , ' +
-            '"poisoned_responses": ' +
-            maybe_poisoned_responses_json_string +
-            ',' +
-            `"total_attempts": "${JSON.stringify(attackTuples.length * Object.keys(prompt.templateValues).length)}"` +
-            ',' +
-            `"total_variables_in_prompt": "${JSON.stringify(Object.keys(prompt.templateValues).length)}"` +
-            '}';
-        let temp_json = JSON.parse(str);
-        return temp_json;
+        let temp_response: VariableInjectionResult = {
+            vulnerable: 'Maybe',
+            poisoned_responses: maybe_poisoned_responses_array,
+            total_attempts:
+                attackTuples.length * Object.keys(prompt.templateValues).length,
+            total_variables_in_prompt: Object.keys(prompt.templateValues)
+                .length,
+        };
+        return temp_response;
     } else {
         return JSON.parse('{"vulnerable": "No"}');
     }
@@ -240,22 +253,33 @@ async function processInjection(
             false,
             true
         );
-
-        // convert attack to word list
-        const attack_list = attack.split(' ');
         if (injectedResult !== undefined && injectedResult !== null) {
-            injectedResult = JSON.stringify(injectedResult);
+            // injectedResult = JSON.stringify(injectedResult);
             // console.log(JSON.stringify(result));
             // console.log(JSON.stringify(default_response));
             // console.log(_cosineSimilarity(result,default_response));
-
             // if it contains the attack response
             if (injectedResult?.includes(attack_response)) {
-                // attack detected
-                poisoned_responses.push([
-                    injectionPointVariable,
-                    injectedResult,
-                ]);
+                try {
+                    const json = JSON.parse(injectedResult);
+                    // if it's a JSON
+                    if (json.error && !json.error.includes('I am sorry')) {
+                        // attack detected
+                        if (json.error_message) {
+                            poisoned_responses.push([
+                                injectionPointVariable,
+                                JSON.stringify(json.error_message),
+                            ]);
+                        }
+                    }
+                } catch (e) {
+                    // not a JSON
+                    // attack detected
+                    poisoned_responses.push([
+                        injectionPointVariable,
+                        JSON.stringify(injectedResult),
+                    ]);
+                }
             }
             // if the similarity to the base response is lower
             // else if (

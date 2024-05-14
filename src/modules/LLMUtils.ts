@@ -191,7 +191,7 @@ export async function sendChatRequestAndGetDirectResponse(
         Object.fromEntries(filteredOptions);
 
     // if backend is Azure or OpenAI
-    console.log(organizedMessages[1].content);
+    // console.log(organizedMessages[1].content);
     if (client instanceof OpenAI) {
         try {
             const response = await retryExponential(async () => {
@@ -275,9 +275,9 @@ export async function sendChatRequestAndGetDirectResponse(
                     'LLM failed to generate an appropriate response, and I am sorry was returned'
                 );
                 return (
-                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
-                    completeResult +
-                    '"}'
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message":' +
+                    JSON.stringify(completeResult) +
+                    '}'
                 );
             }
             return completeResult;
@@ -326,9 +326,9 @@ export async function sendChatRequest(
                 // 'LLM failed to generate an appropriate response, and I am sorry was returned'
                 // );
                 return (
-                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
-                    result +
-                    '"}'
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message":' +
+                    JSON.stringify(result) +
+                    '}'
                 );
             }
             if (cleanJsonOutput) {
@@ -355,9 +355,9 @@ export async function sendChatRequest(
                     'LLM failed to generate an appropriate response, and I am sorry was returned'
                 );
                 return (
-                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": "' +
-                    completeResult +
-                    '"}'
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message": ' +
+                    JSON.stringify(completeResult) +
+                    '}'
                 );
             }
             if (cleanJsonOutput) {
