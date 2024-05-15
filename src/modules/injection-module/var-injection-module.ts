@@ -13,7 +13,7 @@ const modelType = LLMUtils.GPTModel.GPT3_5Turbo;
 
 export type VariableInjectionResult = {
     error?: string;
-    vulnerable?: string;
+    vulnerable?: string; // Yes, No, Maybe
     poisoned_responses?: Array<[string, string]>;
     total_attempts?: number;
     total_variables_in_prompt?: number;
