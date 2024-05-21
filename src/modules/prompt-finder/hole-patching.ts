@@ -1,9 +1,8 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-import * as utils from '../LLMUtils.js';
-import * as PromptUtils from '../PromptUtils.js';
-import * as vscode from 'vscode';
-import { PromptMetadata, PromptTemplateHole } from './index.js';
-import * as fs from 'fs';
+import * as utils from '../LLMUtils';
+import * as PromptUtils from '../PromptUtils';
+// import * as vscode from 'vscode';
+import { PromptMetadata, PromptTemplateHole } from './index';
 // import HoleFillingPromptJson from './hole-patching-prompt.json';
 import path from 'path';
 
@@ -98,11 +97,12 @@ async function _patchValue(
     );
     // load source code file contents from file
     // convert the source code file path to a  uri
-    const sourceCodeFilePath = vscode.Uri.file(prompt.sourceFilePath);
-    const sourceCodeFileContents = fs.readFileSync(
-        sourceCodeFilePath.fsPath,
-        'utf8'
-    );
+    // const sourceCodeFilePath = vscode.Uri.file(prompt.sourceFilePath);
+    const sourceCodeFileContents = '';
+    // fs.readFileSync(
+    //     sourceCodeFilePath.fsPath,
+    //     'utf8'
+    // );
 
     // inject source code file contents into the prompt
     let tempUserPromptToSend = userPromptToSend.replace(
@@ -170,21 +170,21 @@ async function _patchValue(
         );
     }
     // look for read me file in the same directory , or the repository root
-    let readmeFilePath = findReadmeFile(prompt.sourceFilePath);
+    // let readmeFilePath = findReadmeFile(prompt.sourceFilePath);
     let readmeFileContents = '';
     tempUserPromptToSend = userPromptToSend;
-    if (readmeFilePath) {
-        const readmeFilePathURI = vscode.Uri.file(readmeFilePath);
-        readmeFileContents = await fs.promises.readFile(
-            readmeFilePathURI.fsPath,
-            'utf8'
-        );
-        // inject readme file contents into the prompt
-        tempUserPromptToSend +=
-            '\n You may use the following README.md file contents to help you better understand the context of this prompt: \n `' +
-            readmeFileContents +
-            '`';
-    }
+    // if (readmeFilePath) {
+    //     const readmeFilePathURI = vscode.Uri.file(readmeFilePath);
+    //     readmeFileContents = await fs.promises.readFile(
+    //         readmeFilePathURI.fsPath,
+    //         'utf8'
+    //     );
+    //     // inject readme file contents into the prompt
+    //     tempUserPromptToSend +=
+    //         '\n You may use the following README.md file contents to help you better understand the context of this prompt: \n `' +
+    //         readmeFileContents +
+    //         '`';
+    // }
     if (
         !(await utils.isPromptShortEnoughForModel(
             tempUserPromptToSend,
@@ -249,39 +249,39 @@ async function _patchValue(
     }
 }
 
-function findReadmeFile(sourceFilePath: string): string | undefined {
-    // look for read me file in the same directory , or the repository root
-    const filePath = path.dirname(sourceFilePath);
-    let readmeFilePath = path.join(filePath, 'README.md');
-    if (fs.existsSync(readmeFilePath)) {
-        return readmeFilePath;
-    } else {
-        for (let workspaceFolder of vscode.workspace.workspaceFolders?.values() ||
-            []) {
-            let rootPath = workspaceFolder.uri.fsPath;
-            if (rootPath) {
-                // check if readme file exists in the root path
-                readmeFilePath = path.join(rootPath, 'README.md');
-                if (fs.existsSync(readmeFilePath)) {
-                    return readmeFilePath;
-                }
-                // find the list of directories in the root path
-                let directories = fs.readdirSync(rootPath, {
-                    withFileTypes: true,
-                });
-                for (let directory of directories) {
-                    if (directory.isDirectory()) {
-                        // check if readme file exists in the directory
-                        const returnValue: string | undefined = findReadmeFile(
-                            path.join(rootPath, directory.name)
-                        );
-                        if (returnValue) {
-                            return returnValue;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return undefined;
-}
+// function findReadmeFile(sourceFilePath: string): string | undefined {
+//     // look for read me file in the same directory , or the repository root
+//     const filePath = path.dirname(sourceFilePath);
+//     let readmeFilePath = path.join(filePath, 'README.md');
+//     if (fs.existsSync(readmeFilePath)) {
+//         return readmeFilePath;
+//     } else {
+//         for (let workspaceFolder of vscode.workspace.workspaceFolders?.values() ||
+//             []) {
+//             let rootPath = workspaceFolder.uri.fsPath;
+//             if (rootPath) {
+//                 // check if readme file exists in the root path
+//                 readmeFilePath = path.join(rootPath, 'README.md');
+//                 if (fs.existsSync(readmeFilePath)) {
+//                     return readmeFilePath;
+//                 }
+//                 // find the list of directories in the root path
+//                 let directories = fs.readdirSync(rootPath, {
+//                     withFileTypes: true,
+//                 });
+//                 for (let directory of directories) {
+//                     if (directory.isDirectory()) {
+//                         // check if readme file exists in the directory
+//                         const returnValue: string | undefined = findReadmeFile(
+//                             path.join(rootPath, directory.name)
+//                         );
+//                         if (returnValue) {
+//                             return returnValue;
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//     return undefined;
+// }

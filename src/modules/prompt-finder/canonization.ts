@@ -6,8 +6,8 @@ import * as fs from 'fs';
 import { vsprintf } from 'sprintf-js';
 import { GPTModel, sendChatRequest } from '../LLMUtils';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-
 import * as vscode from 'vscode';
+
 export async function canonizeWithTreeSitterANDCopilotGPT(
     sourceFile: string,
     node: Parser.SyntaxNode | null,
@@ -166,6 +166,109 @@ Here is the normalized string:
                 _endLocation = toVSCodePosition(child.endPosition);
             }
         }
+        templateHoles[holeName] = {
+            name: holeName,
+            inferredType: 'string',
+            rawText: match[0],
+            // get the start and end location of the hole in the normalized response in the parsed node
+            startLocation: _startLocation,
+            endLocation: _endLocation,
+        };
+    }
+
+    return [normalizedResponse, templateHoles];
+};
+
+export const canonizeStringWithLLM = async (
+    nodeAsText: string
+): Promise<[string, { [key: string]: PromptTemplateHole }]> => {
+    // const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
+
+    // Goal: take the node, convert to a string, shove it in a prompt
+    // and to get back a normalized string
+
+    let messages: ChatCompletionMessageParam[] = [
+        {
+            role: 'system',
+            content: `
+# Task
+
+You will be given a Python expression. This is expression yields a string and may do so
+via a variety of methods such as string concatenation, string formatting, or string slicing.
+You task is to read this and convert it into a normalized string form.
+
+## Instructions
+
+1. Read the Python expression.
+2. Note where there are "template holes" things like f'Blah blah {{variable}}' that need to be filled in.
+3. Produce as output a single string where any template holes have been normalized to a placeholder like {{variable}}.
+4. Any variable that can't be resolved should be converted to a placeholder like {{variable}}.
+5. Output only the normalized string, nothing else.
+6. If you encounter any problems fulfilling a request, you will start your response with \" I am sorry \"
+            `.trim(),
+        },
+        {
+            role: 'system',
+            content: `
+Here is the Python expression:
+\`\`\`python
+"The following is a conversation with an AI Customer Segment Recommender. \\
+  The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. \\
+  AI, please state a insightful observation about " + prompt_product_desc + "."
+\`\`\`
+Here is the normalized string:
+\`\`\`txt
+            `.trim(),
+        },
+        {
+            role: 'system',
+            content: `
+The following is a conversation with an AI Customer Segment Recommender.
+The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.
+AI, please state a insightful observation about {{prompt_product_desc}}.
+\`\`\`
+            `.trim(),
+        },
+        {
+            role: 'user',
+            content: `
+Here is the Python expression:
+\`\`\`python
+${nodeAsText}
+\`\`\`
+Here is the normalized string:
+\`\`\`txt
+            `.trim(),
+        },
+    ];
+
+    const normalizedResponse = await sendChatRequest(
+        messages,
+        {
+            temperature: 0.0,
+            stop: ['```'],
+            model: GPTModel.GPT3_5Turbo,
+        },
+        undefined,
+        false,
+        false
+    );
+
+    console.log(normalizedResponse);
+
+    // Also parse out the template holes from the normalized string
+
+    // parse the normalized response to get the template holes surrounded by {{}}
+    const templateHoles: { [key: string]: PromptTemplateHole } = {};
+    const regex = /{{(.*?)}}/g;
+    let match;
+
+    while ((match = regex.exec(normalizedResponse))) {
+        const holeName: string = match[1];
+        // get the start and end location of the hole in the normalized response in the parsed node
+        let _startLocation = toVSCodePosition({ row: 0, column: 0 });
+        let _endLocation = toVSCodePosition({ row: 0, column: 0 });
+
         templateHoles[holeName] = {
             name: holeName,
             inferredType: 'string',

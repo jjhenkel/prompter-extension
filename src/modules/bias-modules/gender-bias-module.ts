@@ -1,8 +1,8 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-import * as utils from '../LLMUtils.js';
-import * as PromptUtils from '../PromptUtils.js';
-import { PromptMetadata } from '../prompt-finder/index.js';
-import { patchHoles } from '../prompt-finder/hole-patching.js';
+import * as utils from '../LLMUtils';
+import * as PromptUtils from '../PromptUtils';
+import { PromptMetadata } from '../prompt-finder/index';
+import { patchHoles } from '../prompt-finder/hole-patching';
 import path from 'path';
 
 //  json data fields: gender_biased: bool    may_cause_gender_bias: bool      reasoning: string
