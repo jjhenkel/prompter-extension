@@ -27,14 +27,14 @@ function readFromConsole(prompt: string): Promise<string> {
     return new Promise((resolve) => {
         rl.question(prompt, (answer) => {
             resolve(answer);
-            rl.close();
+            // rl.close();
         });
     });
 }
 
-//   main().finally(() => {
-// rl.close(); // Close the readline interface
-// });
+main().finally(() => {
+    rl.close(); // Close the readline interface
+});
 
 async function main() {
     getClient();
@@ -56,9 +56,9 @@ async function main() {
         getEndpoint() === '' ||
         getEndpoint() === null
     ) {
-        console.log('API key not found in LLMConfig. ');
+        console.log('Endpoint not found in LLMConfig. ');
         const endpoint = await readFromConsole(
-            'Please enter your OpenAI API key: '
+            'Please enter your OpenAI Endpoint: '
         );
         setEndpoint(endpoint);
     }

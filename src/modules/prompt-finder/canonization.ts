@@ -53,8 +53,8 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
     } catch (e) {
         // NOT an error, just a normal flow
     }
-    console.log('Final Response:', finalResponse);
-    console.log('Template Holes:', templateHoles);
+    // console.log('Final Response:', finalResponse);
+    // console.log('Template Holes:', templateHoles);
     return [finalResponse, templateHoles];
 }
 
@@ -243,7 +243,7 @@ Here is the normalized string:
         },
     ];
 
-    const normalizedResponse = await sendChatRequest(
+    let normalizedResponse = await sendChatRequest(
         messages,
         {
             temperature: 0.0,
@@ -254,13 +254,23 @@ Here is the normalized string:
         false,
         false
     );
-
-    console.log(normalizedResponse);
+    const templateHoles: { [key: string]: PromptTemplateHole } = {};
+    try {
+        if (JSON.parse(normalizedResponse).error !== undefined) {
+            console.log(normalizedResponse);
+            console.log(
+                'Error in Normalization, using existing representation'
+            );
+            normalizedResponse = nodeAsText;
+        }
+    } catch (e) {
+        console.log(e);
+    }
 
     // Also parse out the template holes from the normalized string
 
     // parse the normalized response to get the template holes surrounded by {{}}
-    const templateHoles: { [key: string]: PromptTemplateHole } = {};
+
     const regex = /{{(.*?)}}/g;
     let match;
 
@@ -280,6 +290,7 @@ Here is the normalized string:
         };
     }
 
+    normalizedResponse = JSON.stringify(normalizedResponse);
     return [normalizedResponse, templateHoles];
 };
 
