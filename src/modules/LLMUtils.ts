@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import fs from 'fs';
 // import * as vscode from 'vscode';
 import prettier from 'prettier';
 // load the config json
@@ -103,7 +102,7 @@ export function setBackend(backend: Backend) {
     configuration.LLM_Backend = backend;
     configJson.LLM_Backend = Backend[backend];
     // save the new configuration to the config.json file
-    fs.writeFileSync('./config.json', JSON.stringify(configJson, null, 2));
+    // fs.writeFileSync('./config.json', JSON.stringify(configJson, null, 2));
     return config;
 }
 
