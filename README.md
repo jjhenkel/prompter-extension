@@ -14,6 +14,8 @@ PowerPoints [are here (subfolder in the OneDrive)](https://umich-my.sharepoint.c
 
 Meeting minutes in OneNote [are here](https://umich-my.sharepoint.com/:o:/g/personal/dhiarzig_umich_edu/Em1Fn8viUIdNsMI_kNZkVKYBZbIZgBlVmJQIV2uBe2T8fQ).
 
+For a more complete setup of husky and git-secretes ( to prevent api key saving): https://www.codewithyou.com/blog/using-husky-and-gitsecrets-to-prevent-committing-passwords-and-other-sensitive-information-to-a-git-repository
+
 ## Features
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
