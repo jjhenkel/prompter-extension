@@ -84,7 +84,7 @@
         "@types/node": "^20.5.9",
         "@typescript-eslint/eslint-plugin": "^6.19.1",
         "@typescript-eslint/parser": "^6.19.1",
-        "@vscode/test-cli": "^0.0.5",
+        "@vscode/test-cli": "^0.0.9",
         "@vscode/test-electron": "^2.3.9",
         "eslint": "^8.56.0",
         "eslint-config-prettier": "^9.1.0",
@@ -94,14 +94,17 @@
         "lint-staged": "^15.2.2",
         "prettier": "3.2.5",
         "ts-node": "^10.9.2",
-        "typescript": "^5.3.3"
+        "typescript": "^5.3.3",
+        "typescript-cp": "^0.1.9"
     },
     "dependencies": {
+        "@types/js-yaml": "^4.0.9",
         "@types/object-hash": "^3.0.6",
         "@types/sprintf-js": "^1.1.4",
         "axios": "^1.6.7",
         "copyfiles": "^2.4.1",
         "js-tiktoken": "^1.0.11",
+        "js-yaml": "^4.1.0",
         "natural": "^6.12.0",
         "object-hash": "^3.0.0",
         "openai": "^4.28.0",
