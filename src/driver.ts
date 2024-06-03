@@ -6,7 +6,7 @@ import { exit } from 'process';
 import checkGenderBias from './modules/bias-modules/gender-bias-module';
 import { PromptMetadata } from './modules/prompt-finder';
 import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
-import { getAPIKey, setAPIKey } from './modules/LLMUtils';
+import { getAPIKey, getClient, setAPIKey } from './modules/LLMUtils';
 import readline from 'readline';
 // load the data from the json file
 
@@ -31,6 +31,7 @@ function readFromConsole(prompt: string): Promise<string> {
 // });
 
 async function main() {
+    getClient();
     // if API key not defined in current LLMConfig, ask for API key in console
     if (
         getAPIKey() === undefined ||
