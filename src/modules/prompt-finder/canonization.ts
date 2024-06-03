@@ -256,7 +256,8 @@ Here is the normalized string:
     );
     const templateHoles: { [key: string]: PromptTemplateHole } = {};
     try {
-        if (JSON.parse(normalizedResponse).error !== undefined) {
+        let json_error = JSON.parse(normalizedResponse);
+        if (json_error.error !== undefined) {
             console.log(normalizedResponse);
             console.log(
                 'Error in Normalization, using existing representation'
@@ -264,7 +265,7 @@ Here is the normalized string:
             normalizedResponse = nodeAsText;
         }
     } catch (e) {
-        console.log(e);
+        // console.log(e);
     }
 
     // Also parse out the template holes from the normalized string

@@ -75,6 +75,10 @@ async function main() {
     // randomly select x prompts from prompt list
     console.log('selecting random prompts');
     const x = 5;
+    const randomPromptsNoVar: string[] = getRandomElements(
+        prompts['one_variable_prompts'],
+        x
+    );
     const randomPromptsOneVar: string[] = getRandomElements(
         prompts['one_variable_prompts'],
         x
@@ -100,6 +104,7 @@ async function main() {
         x
     );
     //     // run variable injection check on each prompt set
+    let resultsNoVar = [];
     let resultsOneVar = [];
     let resultsTwoVar = [];
     let resultsThreeVar = [];
@@ -107,6 +112,25 @@ async function main() {
     let resultsFiveVar = [];
     let resultsFivePlusVar = [];
     console.log('running gedner-bias check');
+    for (let i = 0; i < randomPromptsNoVar.length; i++) {
+        let tempPromptMeta: PromptMetadata = {
+            id: '0',
+            rawText: randomPromptsNoVar[i],
+        } as PromptMetadata;
+        const tup = await canonizeStringWithLLM(tempPromptMeta.rawText);
+        tempPromptMeta.normalizedText = tup[0];
+        tempPromptMeta.templateValues = tup[1];
+        try {
+            let result = await checkGenderBias(
+                tempPromptMeta
+                // create a new prompt metadata object with the prompt text and the prompt id
+            );
+            console.log(result);
+            resultsNoVar.push([randomPromptsOneVar[i], result]);
+        } catch (e) {
+            console.log(JSON.stringify(e));
+        }
+    }
     for (let i = 0; i < randomPromptsOneVar.length; i++) {
         let tempPromptMeta: PromptMetadata = {
             id: '0',
@@ -126,94 +150,140 @@ async function main() {
             console.log(JSON.stringify(e));
         }
     }
-    rl.close();
-    exit();
-    //     // sleep for 30 seconds to avoid rate limit
-    //     console.log(' One var processed. sleeping  to avoid rate limit');
-    //     await new Promise((r) => setTimeout(r, sleepDuration));
-    //     for (let i = 0; i < randomPromptsTwoVar.length; i++) {
-    //         try {
-    //             let result = await checkGenderBias(randomPromptsTwoVar[i]);
-    //             resultsTwoVar.push([randomPromptsTwoVar[i], result]);
-    //         } catch (e) {
-    //             console.log(JSON.stringify(e));
-    //         }
-    //     }
-    // //     // sleep for 30 seconds to avoid rate limit
-    // //     console.log(' Two var processed. sleeping  to avoid rate limit');
-    // //     await new Promise((r) => setTimeout(r, sleepDuration));
-    //     for (let i = 0; i < randomPromptsThreeVar.length; i++) {
-    //         try {
-    //             let result = await checkGenderBias(randomPromptsThreeVar[i]);
-    //             resultsThreeVar.push([randomPromptsThreeVar[i], result]);
-    //         } catch (e) {
-    //             console.log(JSON.stringify(e));
-    //         }
-    //     }
-    // //     // sleep for 30 seconds to avoid rate limit
-    // //     console.log(' Three var processed. sleeping  to avoid rate limit');
-    // //     await new Promise((r) => setTimeout(r, sleepDuration));
-    //     for (let i = 0; i < randomPromptsFourVar.length; i++) {
-    //         try {
-    //             let result = await checkGenderBias(randomPromptsFourVar[i]);
-    //             resultsFourVar.push([randomPromptsFourVar[i], result]);
-    //         } catch (e) {
-    //             console.log(JSON.stringify(e));
-    //         }
-    //     }
-    // //     // sleep for 30 seconds to avoid rate limit
-    // //     console.log(' Four var processed. sleeping  to avoid rate limit');
-    // //     await new Promise((r) => setTimeout(r, sleepDuration));
-    //     for (let i = 0; i < randomPromptsFiveVar.length; i++) {
-    //         try {
-    //             let result = await checkGenderBias(randomPromptsFiveVar[i]);
-    //             resultsFiveVar.push([randomPromptsFiveVar[i], result]);
-    //         } catch (e) {
-    //             console.log(JSON.stringify(e));
-    //         }
-    //     }
-    // //     // sleep for 30 seconds to avoid rate limit
-    // //     // console.log(" Five var processed. sleeping  to avoid rate limit");
-    //     // await new Promise(r => setTimeout(r, sleepDuration));
-    //     for (let i = 0; i < randomPromptsFivePlusVar.length; i++) {
-    //         try {
-    //             let result = await checkGenderBias(randomPromptsFivePlusVar[i]);
-    //             resultsFivePlusVar.push([randomPromptsFivePlusVar[i], result]);
-    //         }
-    //         catch (e) {
-    //             console.log(JSON.stringify(e));
-    //         }
-    //     }
+    for (let i = 0; i < randomPromptsTwoVar.length; i++) {
+        let tempPromptMeta: PromptMetadata = {
+            id: '0',
+            rawText: randomPromptsTwoVar[i],
+        } as PromptMetadata;
+        const tup = await canonizeStringWithLLM(tempPromptMeta.rawText);
+        tempPromptMeta.normalizedText = tup[0];
+        tempPromptMeta.templateValues = tup[1];
+        try {
+            let result = await checkGenderBias(
+                tempPromptMeta
+                // create a new prompt metadata object with the prompt text and the prompt id
+            );
+            console.log(result);
+            resultsTwoVar.push([randomPromptsTwoVar[i], result]);
+        } catch (e) {
+            console.log(JSON.stringify(e));
+        }
+    }
+    for (let i = 0; i < randomPromptsThreeVar.length; i++) {
+        let tempPromptMeta: PromptMetadata = {
+            id: '0',
+            rawText: randomPromptsThreeVar[i],
+        } as PromptMetadata;
+        const tup = await canonizeStringWithLLM(tempPromptMeta.rawText);
+        tempPromptMeta.normalizedText = tup[0];
+        tempPromptMeta.templateValues = tup[1];
+        try {
+            let result = await checkGenderBias(
+                tempPromptMeta
+                // create a new prompt metadata object with the prompt text and the prompt id
+            );
+            console.log(result);
+            resultsThreeVar.push([randomPromptsThreeVar[i], result]);
+        } catch (e) {
+            console.log(JSON.stringify(e));
+        }
+    }
+    for (let i = 0; i < randomPromptsFourVar.length; i++) {
+        let tempPromptMeta: PromptMetadata = {
+            id: '0',
+            rawText: randomPromptsFourVar[i],
+        } as PromptMetadata;
+        const tup = await canonizeStringWithLLM(tempPromptMeta.rawText);
+        tempPromptMeta.normalizedText = tup[0];
+        tempPromptMeta.templateValues = tup[1];
+        try {
+            let result = await checkGenderBias(
+                tempPromptMeta
+                // create a new prompt metadata object with the prompt text and the prompt id
+            );
+            console.log(result);
+            resultsFourVar.push([randomPromptsFourVar[i], result]);
+        } catch (e) {
+            console.log(JSON.stringify(e));
+        }
+    }
+    for (let i = 0; i < randomPromptsFiveVar.length; i++) {
+        let tempPromptMeta: PromptMetadata = {
+            id: '0',
+            rawText: randomPromptsFiveVar[i],
+        } as PromptMetadata;
+        const tup = await canonizeStringWithLLM(tempPromptMeta.rawText);
+        tempPromptMeta.normalizedText = tup[0];
+        tempPromptMeta.templateValues = tup[1];
+        try {
+            let result = await checkGenderBias(
+                tempPromptMeta
+                // create a new prompt metadata object with the prompt text and the prompt id
+            );
+            console.log(result);
+            resultsFiveVar.push([randomPromptsFiveVar[i], result]);
+        } catch (e) {
+            console.log(JSON.stringify(e));
+        }
+    }
+    for (let i = 0; i < randomPromptsFivePlusVar.length; i++) {
+        let tempPromptMeta: PromptMetadata = {
+            id: '0',
+            rawText: randomPromptsFivePlusVar[i],
+        } as PromptMetadata;
+        const tup = await canonizeStringWithLLM(tempPromptMeta.rawText);
+        tempPromptMeta.normalizedText = tup[0];
+        tempPromptMeta.templateValues = tup[1];
+        try {
+            let result = await checkGenderBias(
+                tempPromptMeta
+                // create a new prompt metadata object with the prompt text and the prompt id
+            );
+            console.log(result);
+            resultsFivePlusVar.push([randomPromptsFivePlusVar[i], result]);
+        } catch (e) {
+            console.log(JSON.stringify(e));
+        }
+    }
+
     // //     // delete existing results files if found
-    //     console.log('deleting existing results files');
-    //     if (fs.existsSync('results_one_var.json')) {
-    //         fs.unlinkSync('results_one_var.json');
-    //     }
-    //     if (fs.existsSync('results_two_var.json')) {
-    //         fs.unlinkSync('results_two_var.json');
-    //     }
-    //     if (fs.existsSync('results_three_var.json')) {
-    //         fs.unlinkSync('results_three_var.json');
-    //     }
-    //     if (fs.existsSync('results_four_var.json')) {
-    //         fs.unlinkSync('results_four_var.json');
-    //     }
-    //     if (fs.existsSync('results_five_var.json')) {
-    //         fs.unlinkSync('results_five_var.json');
-    //     }
-    //     if (fs.existsSync('results_five_plus_var.json')) {
-    //         fs.unlinkSync('results_five_plus_var.json');
-    //     }
+    console.log('deleting existing results files');
+    if (fs.existsSync('results_no_var.json')) {
+        fs.unlinkSync('results_no_var.json');
+    }
+    if (fs.existsSync('results_one_var.json')) {
+        fs.unlinkSync('results_one_var.json');
+    }
+    if (fs.existsSync('results_two_var.json')) {
+        fs.unlinkSync('results_two_var.json');
+    }
+    if (fs.existsSync('results_three_var.json')) {
+        fs.unlinkSync('results_three_var.json');
+    }
+    if (fs.existsSync('results_four_var.json')) {
+        fs.unlinkSync('results_four_var.json');
+    }
+    if (fs.existsSync('results_five_var.json')) {
+        fs.unlinkSync('results_five_var.json');
+    }
+    if (fs.existsSync('results_five_plus_var.json')) {
+        fs.unlinkSync('results_five_plus_var.json');
+    }
     // //     // save results to json files
-    //     console.log('saving results to json files');
-    //     fs.writeFileSync('results_one_var.json', JSON.stringify(resultsOneVar));
-    //     fs.writeFileSync('results_two_var.json', JSON.stringify(resultsTwoVar));
-    //     fs.writeFileSync('results_three_var.json', JSON.stringify(resultsThreeVar));
-    //     fs.writeFileSync('results_four_var.json', JSON.stringify(resultsFourVar));
-    //     fs.writeFileSync('results_five_var.json', JSON.stringify(resultsFiveVar));
-    //     fs.writeFileSync('results_five_plus_var.json', JSON.stringify(resultsFivePlusVar));
-    //     console.log('done');
+    console.log('saving results to json files');
+    fs.writeFileSync('results_no_var.json', JSON.stringify(resultsNoVar));
+    fs.writeFileSync('results_one_var.json', JSON.stringify(resultsOneVar));
+    fs.writeFileSync('results_two_var.json', JSON.stringify(resultsTwoVar));
+    fs.writeFileSync('results_three_var.json', JSON.stringify(resultsThreeVar));
+    fs.writeFileSync('results_four_var.json', JSON.stringify(resultsFourVar));
+    fs.writeFileSync('results_five_var.json', JSON.stringify(resultsFiveVar));
+    fs.writeFileSync(
+        'results_five_plus_var.json',
+        JSON.stringify(resultsFivePlusVar)
+    );
+    console.log('done');
     // }
+    exit();
 }
 
 function getRandomElements(arr_original: string[], n: number): string[] {

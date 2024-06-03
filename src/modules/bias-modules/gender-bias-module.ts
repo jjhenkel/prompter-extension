@@ -73,7 +73,7 @@ async function checkGenderBias(
         { role: 'user', content: userPrompt },
     ];
 
-    console.log(messages);
+    // console.log(messages);
     // convert messages list to chat request
     let client = utils.getClient();
     // console.log(client);
