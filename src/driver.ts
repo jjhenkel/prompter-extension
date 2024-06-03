@@ -6,7 +6,13 @@ import { exit } from 'process';
 import checkGenderBias from './modules/bias-modules/gender-bias-module';
 import { PromptMetadata } from './modules/prompt-finder';
 import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
-import { getAPIKey, getClient, setAPIKey } from './modules/LLMUtils';
+import {
+    getAPIKey,
+    getClient,
+    getEndpoint,
+    setAPIKey,
+    setEndpoint,
+} from './modules/LLMUtils';
 import readline from 'readline';
 // load the data from the json file
 
@@ -43,6 +49,18 @@ async function main() {
             'Please enter your OpenAI API key: '
         );
         setAPIKey(apiKey);
+    }
+
+    if (
+        getEndpoint() === undefined ||
+        getEndpoint() === '' ||
+        getEndpoint() === null
+    ) {
+        console.log('API key not found in LLMConfig. ');
+        const endpoint = await readFromConsole(
+            'Please enter your OpenAI API key: '
+        );
+        setEndpoint(endpoint);
     }
 
     // print current working directory

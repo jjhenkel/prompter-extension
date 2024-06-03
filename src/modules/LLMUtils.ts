@@ -125,14 +125,14 @@ export function getAPIKey(): string | undefined {
 export function setEndpoint(endpoint: string) {
     configuration.Endpoint = endpoint;
     configJson.Endpoint = endpoint;
-    fs.writeFileSync('./config.json', JSON.stringify(configJson, null, 2));
+    // fs.writeFileSync('./config.json', JSON.stringify(configJson, null, 2));
     return config;
 }
 
 export function setAPIKey(APIKey: string) {
     configuration.APIKey = APIKey;
     configJson.APIKey = APIKey;
-    fs.writeFileSync('./config.json', JSON.stringify(configJson, null, 2));
+    // fs.writeFileSync('./config.json', JSON.stringify(configJson, null, 2));
     return config;
 }
 
