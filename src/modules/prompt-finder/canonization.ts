@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import { vsprintf } from 'sprintf-js';
 import { GPTModel, sendChatRequest } from '../LLMUtils';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-import * as vscode from 'vscode';
+// import * as vscode from 'vscode';
 
 export async function canonizeWithTreeSitterANDCopilotGPT(
     sourceFile: string,
@@ -27,7 +27,7 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
     try {
         // fallback to local parsing in case LLM fails to generate a proper response
         const json_error = JSON.parse(finalResponse);
-        if (json_error.error) {
+        if (json_error.error !== undefined && json_error.error === true) {
             console.log(
                 'Error in canonizeWithTreeSitterANDCopilotGPT, trying LLM only parsing'
             );
@@ -40,7 +40,7 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
         );
         try {
             const json_error = JSON.parse(finalResponse);
-            if (json_error.error) {
+            if (json_error.error !== undefined && json_error.error === true) {
                 console.log(
                     'Error in canonizeWithLLMOnly, trying local only parsing'
                 );
@@ -53,7 +53,8 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
     } catch (e) {
         // NOT an error, just a normal flow
     }
-
+    console.log('Final Response:', finalResponse);
+    console.log('Template Holes:', templateHoles);
     return [finalResponse, templateHoles];
 }
 
@@ -352,11 +353,8 @@ export function canonizePromptWithTreeSitter(
 ): [string, { [key: string]: PromptTemplateHole }] {
     try {
         let templateHoles: { [key: string]: PromptTemplateHole } = {};
-        const sourceFileURI = vscode.Uri.file(sourceFile);
-        const sourceFileContents = fs.readFileSync(
-            sourceFileURI.fsPath,
-            'utf8'
-        );
+        // const sourceFileURI = file(sourceFile);
+        const sourceFileContents = fs.readFileSync(sourceFile, 'utf8');
         // console.log('File loaded');
         const tree = parser.parse(sourceFileContents.toString());
         // get the node's descendants recursively that are strings and identifiers

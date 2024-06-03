@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+// import * as vscode from 'vscode';
 import Parser from 'web-tree-sitter';
 import hash from 'object-hash';
 import { canonizeWithTreeSitterANDCopilotGPT } from './canonization';
@@ -10,8 +10,8 @@ export type PromptTemplateHole = {
     name: string;
     inferredType: string;
     rawText: string;
-    startLocation: vscode.Position;
-    endLocation: vscode.Position;
+    startLocation: number;
+    endLocation: number;
     defaultValue?: any;
 };
 
@@ -19,8 +19,8 @@ export type PromptTemplateHole = {
 export type PromptParameter = {
     name: string;
     rawText: string;
-    startLocation: vscode.Position;
-    endLocation: vscode.Position;
+    startLocation: number;
+    endLocation: number;
 };
 
 // This type represents a prompt and its metadata. It includes
@@ -32,10 +32,10 @@ export type PromptMetadata = {
     rawText: string;
     rawTextOfParentCall: string;
     normalizedText: string;
-    startLocation: vscode.Position;
-    endLocation: vscode.Position;
-    parentCallStartLocation: vscode.Position;
-    parentCallEndLocation: vscode.Position;
+    startLocation: number;
+    endLocation: number;
+    parentCallStartLocation: number;
+    parentCallEndLocation: number;
     templateValues: {
         [key: string]: PromptTemplateHole;
     };
@@ -58,17 +58,16 @@ export type PromptMetadata = {
 let parserG: Parser | null = null;
 
 export const findPrompts = async (
-    extensionUri: vscode.Uri,
+    extensionUri: string,
     filesToScan: Array<{ contents: string; path: string }>
 ) => {
     // Init parser
     await Parser.init();
 
     // Get the path to the python grammar (WASM file)
-    const pythonGrammarUri = vscode.Uri.joinPath(
-        extensionUri,
-        'src/modules/prompt-finder/parsers/tree-sitter-python.wasm'
-    ).fsPath;
+    const pythonGrammarUri =
+        extensionUri +
+        'src/modules/prompt-finder/parsers/tree-sitter-python.wasm';
 
     // Load the python grammar
     const pythonGrammar = await Parser.Language.load(pythonGrammarUri);
@@ -199,8 +198,7 @@ const _getOpenAIPromptMetadataQuery = (
     );
 };
 
-export const toVSCodePosition = (position: Parser.Point) =>
-    new vscode.Position(position.row, position.column);
+export const toVSCodePosition = (position: Parser.Point) => 0;
 
 const _findOpenAICompletionCreate = async (
     sourceFilePath: string,
@@ -647,10 +645,11 @@ const _createPromptMetadata = async (
     promptMeta.endLocation = toVSCodePosition(promptNode.endPosition);
 
     // Off by one error in the end location, so we'll fix it
-    promptMeta.endLocation = new vscode.Position(
-        promptMeta.endLocation.line + 1,
-        promptMeta.endLocation.character
-    );
+    promptMeta.endLocation = 0;
+    // new number(
+    //     promptMeta.endLocation.line + 1,
+    //     promptMeta.endLocation.character
+    // );
     promptMeta.promptNode = promptNode;
 
     // The template holes and normalized text will be dealt with later

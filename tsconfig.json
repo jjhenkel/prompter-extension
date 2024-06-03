@@ -1,6 +1,8 @@
 {
     "compilerOptions": {
         "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        // "types": ["vscode"],
         "target": "ES2022",
         "outDir": "out",
         "lib": ["ES2022"],

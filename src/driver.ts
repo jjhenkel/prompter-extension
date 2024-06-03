@@ -2,17 +2,57 @@
 
 // import the modules
 
+import { exit } from 'process';
 import checkGenderBias from './modules/bias-modules/gender-bias-module';
 import { PromptMetadata } from './modules/prompt-finder';
 import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
-
+import { getAPIKey, setAPIKey } from './modules/LLMUtils';
+import readline from 'readline';
 // load the data from the json file
 
 const fs = require('fs');
-const data = fs.readFileSync('../data/runnable_prompts_ascii.json', 'utf8');
-const prompts = JSON.parse(data);
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+});
+
+function readFromConsole(prompt: string): Promise<string> {
+    return new Promise((resolve) => {
+        rl.question(prompt, (answer) => {
+            resolve(answer);
+            rl.close();
+        });
+    });
+}
+
+//   main().finally(() => {
+// rl.close(); // Close the readline interface
+// });
 
 async function main() {
+    // if API key not defined in current LLMConfig, ask for API key in console
+    if (
+        getAPIKey() === undefined ||
+        getAPIKey() === '' ||
+        getAPIKey() === null
+    ) {
+        console.log('API key not found in LLMConfig. ');
+        const apiKey = await readFromConsole(
+            'Please enter your OpenAI API key: '
+        );
+        setAPIKey(apiKey);
+    }
+
+    // print current working directory
+    // console.log('current working directory: ', __dirname);
+    // exit()
+    const data = fs.readFileSync(
+        __dirname + '/../data/runnable_prompts_ascii.json',
+        'utf8'
+    );
+    const prompts = JSON.parse(data);
+
     // randomly select x prompts from prompt list
     console.log('selecting random prompts');
     const x = 5;
@@ -67,6 +107,8 @@ async function main() {
             console.log(JSON.stringify(e));
         }
     }
+    rl.close();
+    exit();
     //     // sleep for 30 seconds to avoid rate limit
     //     console.log(' One var processed. sleeping  to avoid rate limit');
     //     await new Promise((r) => setTimeout(r, sleepDuration));
@@ -169,3 +211,5 @@ function getRandomElements(arr_original: string[], n: number): string[] {
         .map(({ value }) => value);
     return shuffled.slice(0, n);
 }
+
+main();

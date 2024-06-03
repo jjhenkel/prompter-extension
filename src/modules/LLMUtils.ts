@@ -83,6 +83,21 @@ let configJson: configJson = config;
 let configuration: Config = {
     LLM_Backend: Backend[config.LLM_Backend as keyof typeof Backend],
 };
+if (
+    configJson.Endpoint !== undefined &&
+    configJson.Endpoint !== '' &&
+    configJson.Endpoint !== null
+) {
+    configuration.Endpoint = configJson.Endpoint;
+}
+
+if (
+    configJson.APIKey !== undefined &&
+    configJson.APIKey !== '' &&
+    configJson.APIKey !== null
+) {
+    configuration.APIKey = configJson.APIKey;
+}
 
 export function setBackend(backend: Backend) {
     configuration.LLM_Backend = backend;
