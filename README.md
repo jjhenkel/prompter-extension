@@ -16,6 +16,7 @@ Meeting minutes in OneNote [are here](https://umich-my.sharepoint.com/:o:/g/pers
 
 For a more complete setup of husky and git-secretes ( to prevent api key saving): https://www.codewithyou.com/blog/using-husky-and-gitsecrets-to-prevent-committing-passwords-and-other-sensitive-information-to-a-git-repository
 
+
 ## Features
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
