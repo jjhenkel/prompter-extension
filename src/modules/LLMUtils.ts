@@ -18,9 +18,9 @@ loadTikTokenModule();
 async function retryExponential<T>(
     fn: () => Promise<T>,
     maxTry: number = 10,
-    maxTimeout: number = 600000
+    maxTimeout: number = 36000000
 ): Promise<T> {
-    const delay = createExponetialDelay(3000);
+    const delay = createExponetialDelay(60000);
     return await ((await waitUntilAsync(async () => {
         return await retryAsync(fn, {
             maxTry,

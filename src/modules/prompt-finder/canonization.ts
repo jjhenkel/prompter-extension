@@ -273,6 +273,8 @@ Here is the normalized string:
     // parse the normalized response to get the template holes surrounded by {{}}
 
     const regex = /{{(.*?)}}/g;
+    // regex for  the word Placeholder regardgles of  case
+    const regex_2 = /Placeholder/gi;
     let match;
 
     while ((match = regex.exec(normalizedResponse))) {
@@ -285,6 +287,23 @@ Here is the normalized string:
             name: holeName,
             inferredType: 'string',
             rawText: match[0],
+            // get the start and end location of the hole in the normalized response in the parsed node
+            startLocation: _startLocation,
+            endLocation: _endLocation,
+        };
+    }
+    let i = 0;
+    while ((match = regex_2.exec(normalizedResponse))) {
+        const holeName: string = 'PLACEHOLDER' + '_' + i;
+        i += 1;
+        // get the start and end location of the hole in the normalized response in the parsed node
+        let _startLocation = toVSCodePosition({ row: 0, column: 0 });
+        let _endLocation = toVSCodePosition({ row: 0, column: 0 });
+
+        templateHoles[holeName] = {
+            name: holeName,
+            inferredType: 'string',
+            rawText: 'PLACEHOLDER',
             // get the start and end location of the hole in the normalized response in the parsed node
             startLocation: _startLocation,
             endLocation: _endLocation,

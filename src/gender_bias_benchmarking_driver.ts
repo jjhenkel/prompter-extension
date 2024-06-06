@@ -77,6 +77,7 @@ async function processGenderBiasCheckPrompt(prompt: sexism_data) {
         rawText: prompt.text,
     } as PromptMetadata;
     // const tup = await canonizeStringWithLLM(tempPromptMeta.rawText);
+
     tempPromptMeta.normalizedText = JSON.stringify(tempPromptMeta.rawText);
     // tempPromptMeta.templateValues = tup[1];
     try {
@@ -131,6 +132,19 @@ async function main() {
         setEndpoint(endpoint);
     }
 
+    // read existing results_banchmark.json file, and extract the ids that were already processed
+    let existingResults = JSON.parse(
+        fs.readFileSync('results_benchmark.json', 'utf8')
+    );
+    let existingIds = existingResults.map((result: any) => result?.id);
+    existingResults = JSON.parse(
+        fs.readFileSync('results_benchmark-2.json', 'utf8')
+    );
+    // add the ids from the second file to the existingIds
+    existingIds = existingIds.concat(
+        existingResults.map((result: any) => result?.id)
+    );
+
     let results_benchmark = [];
     // for (let i = 1; i < 11; i++) {
     //     let tempPromptMeta: PromptMetadata = {
@@ -162,16 +176,31 @@ async function main() {
     // }
 
     const genderCheckPromises = prompts.slice(1).map(async (prompt) => {
+        if (existingIds.includes(prompt.id)) {
+            return {
+                id: prompt.id,
+                dataset: prompt.dataset,
+                text: prompt.text,
+                toxicity: prompt.toxicity,
+                sexist: prompt.sexist,
+                of_id: prompt.of_id,
+                result: 'Already processed',
+            };
+        }
         return await processGenderBiasCheckPrompt(prompt);
     });
     results_benchmark = await Promise.all(genderCheckPromises);
+    // remove already processed prompts from the list
+    results_benchmark = results_benchmark.filter(
+        (result) => result?.result !== 'Already processed'
+    );
 
-    if (fs.existsSync('results_benchmark.json')) {
-        fs.unlinkSync('results_benchmark.json');
+    if (fs.existsSync('results_benchmark-3.json')) {
+        fs.unlinkSync('results_benchmark-3.json');
     }
 
     fs.writeFileSync(
-        'results_benchmark.json',
+        'results_benchmark-3.json',
         JSON.stringify(results_benchmark)
     );
 
