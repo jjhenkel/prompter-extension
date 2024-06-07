@@ -258,10 +258,10 @@ Here is the normalized string:
     try {
         let json_error = JSON.parse(normalizedResponse);
         if (json_error.error !== undefined) {
-            console.log(normalizedResponse);
-            console.log(
-                'Error in Normalization, using existing representation'
-            );
+            // console.log(normalizedResponse);
+            // console.log(
+            // 'Error in Normalization, using existing representation'
+            // );
             normalizedResponse = nodeAsText;
         }
     } catch (e) {

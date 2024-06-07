@@ -132,3 +132,6 @@ dist
 # results jsons
 
 results*.json
+
+#Mac os system files
+**/.DS_Store 
