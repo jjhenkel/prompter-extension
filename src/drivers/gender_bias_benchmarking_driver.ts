@@ -3,8 +3,8 @@
 // import the modules
 
 import { exit } from 'process';
-import checkGenderBias from './modules/bias-modules/gender-bias-module';
-import { PromptMetadata } from './modules/prompt-finder';
+import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import { PromptMetadata } from '../modules/prompt-finder';
 // import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
 import {
     getAPIKey,
@@ -12,7 +12,7 @@ import {
     getEndpoint,
     setAPIKey,
     setEndpoint,
-} from './modules/LLMUtils';
+} from '../modules/LLMUtils';
 import readline from 'readline';
 import { parse } from 'csv-parse';
 

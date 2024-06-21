@@ -3,10 +3,10 @@
 // import the modules
 
 import { exit } from 'process';
-import checkGenderBias from './modules/bias-modules/gender-bias-module';
-import { PromptMetadata, PromptTemplateHole } from './modules/prompt-finder';
-import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
-import { getClient } from './modules/LLMUtils';
+import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import { PromptMetadata, PromptTemplateHole } from '../modules/prompt-finder';
+import { canonizeStringWithLLM } from '../modules/prompt-finder/canonization';
+import { getClient } from '../modules/LLMUtils';
 import readline from 'readline';
 // load the data from the json file
 
