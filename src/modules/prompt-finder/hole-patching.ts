@@ -14,8 +14,18 @@ export type patchedVariable = {
     error?: string;
 };
 
+const modelType = utils.GPTModel.GPT3_5Turbo;
+
+export type patchedVariable = {
+    name: string;
+    value: string;
+    error?: string;
+};
+
 export async function patchHoles(
     promptObject: PromptMetadata,
+    forceRepatch: boolean = false,
+    useSystemPrompt: boolean = true
     forceRepatch: boolean = false,
     useSystemPrompt: boolean = true
 ) {
@@ -25,6 +35,8 @@ export async function patchHoles(
                 promptObject,
                 promptObject.templateValues[key],
                 useSystemPrompt
+                promptObject.templateValues[key],
+                useSystemPrompt
             );
             if (fillValue.error) {
                 return;
@@ -32,6 +44,23 @@ export async function patchHoles(
             promptObject.templateValues[key].defaultValue = fillValue.value;
         }
     }
+}
+
+export function unpatchHoles(
+    newPromptString: string,
+    promptObject: PromptMetadata
+): [string, string[]] {
+    let unmatchedKeys = [];
+    for (let key in promptObject.templateValues) {
+        let value = promptObject.templateValues[key].defaultValue;
+        if (value && newPromptString.includes(value)) {
+            newPromptString = newPromptString.replace(value, '{{' + key + '}}');
+        } else {
+            console.log('Error: Could not find value to unpatch');
+            unmatchedKeys.push(key);
+        }
+    }
+    return [newPromptString, unmatchedKeys];
 }
 
 export function unpatchHoles(
@@ -70,6 +99,23 @@ async function _patchValue(
         serializedPrompts,
         'system'
     )[0].content;
+    templateValue: PromptTemplateHole,
+    useSystemPrompt: boolean
+): Promise<patchedVariable> {
+    // load prompt from yaml file
+    let serializedPrompts = PromptUtils.loadPromptsFromYaml(
+        path.resolve(__dirname, 'hole-patching-prompt.yaml')
+    );
+
+    let userPromptToSendObject = PromptUtils.getPromptsOfRole(
+        serializedPrompts,
+        'user'
+    )[0];
+    let userPromptToSend = userPromptToSendObject.content;
+    let systemPromptToSend = PromptUtils.getPromptsOfRole(
+        serializedPrompts,
+        'system'
+    )[0].content;
     let promptWithHoles = prompt.normalizedText;
     // fill in the holes in the prompt where default values are ready : this should make the default values more consistent with each other
     for (let key in prompt.templateValues) {
@@ -86,12 +132,22 @@ async function _patchValue(
             error: 'Injected variables not found in prompt',
         };
     }
+    if (userPromptToSendObject.injectedVariables === undefined) {
+        console.log('Error: Injected variables not found in prompt');
+        return {
+            name: templateValue.name,
+            value: '',
+            error: 'Injected variables not found in prompt',
+        };
+    }
     userPromptToSend = userPromptToSend.replace(
+        '{{' + userPromptToSendObject.injectedVariables[0] + '}}',
         '{{' + userPromptToSendObject.injectedVariables[0] + '}}',
         promptWithHoles
     );
     let variableName = templateValue.name;
     userPromptToSend = userPromptToSend.replace(
+        '{{' + userPromptToSendObject.injectedVariables[1] + '}}',
         '{{' + userPromptToSendObject.injectedVariables[1] + '}}',
         variableName
     );
@@ -107,8 +163,70 @@ async function _patchValue(
     // inject source code file contents into the prompt
     let tempUserPromptToSend = userPromptToSend.replace(
         '{{' + userPromptToSendObject.injectedVariables[2] + '}}',
+    let tempUserPromptToSend = userPromptToSend.replace(
+        '{{' + userPromptToSendObject.injectedVariables[2] + '}}',
         sourceCodeFileContents
     );
+    //TODO add support for different lengths depending on LLM used
+    if (
+        !(await utils.isPromptShortEnoughForModel(
+            tempUserPromptToSend,
+            modelType
+        ))
+    ) {
+        // parse the source code file to get the global variables
+        console.log(
+            'Source code file too large for LLM, sending only the direct containing function'
+        );
+        let sourceCodeToInject = '';
+        if (prompt.promptNode !== undefined) {
+            let scopePrompt = prompt.promptNode;
+            while (
+                scopePrompt.type !== 'function' &&
+                scopePrompt.parent !== undefined &&
+                scopePrompt.parent !== null
+            ) {
+                scopePrompt = scopePrompt.parent;
+            }
+            sourceCodeToInject = scopePrompt.text;
+        } else {
+            sourceCodeToInject = prompt.rawTextOfParentCall;
+        }
+        tempUserPromptToSend = tempUserPromptToSend.replace(
+            '{{' + userPromptToSendObject.injectedVariables[2] + '}}',
+            sourceCodeToInject
+        );
+        if (
+            !(await utils.isPromptShortEnoughForModel(
+                tempUserPromptToSend,
+                modelType
+            ))
+        ) {
+            console.log(
+                `Source code file too large for LLM, sending only the first ${utils.getMaxTokenLength(modelType)} of tokens`
+            );
+            tempUserPromptToSend = await utils.slicePromptForModel(
+                tempUserPromptToSend,
+                modelType
+            );
+        }
+    }
+    userPromptToSend = tempUserPromptToSend;
+    // add the system prompt and corresponding command if available
+    if (useSystemPrompt && prompt.selectedSystemPromptText !== undefined) {
+        const systemPromptCmd =
+            ' .\n To better inform your guess, you should use the following system prompt for guidance context: \n ' +
+            prompt.selectedSystemPromptText;
+        userPromptToSend = userPromptToSend.replace(
+            '{{' + userPromptToSendObject.injectedVariables[3] + '}}',
+            systemPromptCmd
+        );
+    } else {
+        userPromptToSend = userPromptToSend.replace(
+            '{{' + userPromptToSendObject.injectedVariables[3] + '}}',
+            ''
+        );
+    }
     //TODO add support for different lengths depending on LLM used
     if (
         !(await utils.isPromptShortEnoughForModel(
@@ -225,6 +343,18 @@ async function _patchValue(
                 true,
                 false
             );
+            const result = await utils.sendChatRequest(
+                messages,
+                {
+                    model: modelType,
+                    temperature: 0.3,
+                    seed: 42,
+                    // type: "json_object" // force answer to be valid json ==> NOT SUPPORTED BY AZURE
+                },
+                undefined,
+                true,
+                false
+            );
             // convert result to json and return
             if (result !== undefined && result !== null) {
                 try {
@@ -233,14 +363,20 @@ async function _patchValue(
                 } catch (error) {
                     return JSON.parse(
                         '{"error": "Issue during LLM completion: Invalid JSON"}'
+                        '{"error": "Issue during LLM completion: Invalid JSON"}'
                     );
                 }
             } else {
                 return JSON.parse('{"error": "No response from LLM"}');
+                return JSON.parse('{"error": "No response from LLM"}');
             }
         } catch (error) {
             console.error('Error during LLM completion:', error);
+            console.error('Error during LLM completion:', error);
             return JSON.parse(
+                '{"error": "Issue during LLM completion", "error_message": "' +
+                    error +
+                    '"}'
                 '{"error": "Issue during LLM completion", "error_message": "' +
                     error +
                     '"}'

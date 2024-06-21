@@ -59,11 +59,13 @@ export async function canonizeWithTreeSitterANDCopilotGPT(
 }
 
 export const canonizeWithLLM = async (
+export const canonizeWithLLM = async (
     sourceFile: string,
     node: Parser.SyntaxNode | null,
     preNormalizedNodeText: string = ''
     // parser: Parser
 ): Promise<[string, { [key: string]: PromptTemplateHole }]> => {
+    // const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
     // const LANGUAGE_MODEL_ID = 'copilot-gpt-3.5-turbo';
 
     // Goal: take the node, convert to a string, shove it in a prompt
@@ -72,6 +74,10 @@ export const canonizeWithLLM = async (
     if (nodeAsText === '') {
         nodeAsText = node?.text || '';
     }
+    let messages: ChatCompletionMessageParam[] = [
+        {
+            role: 'system',
+            content: `
     let messages: ChatCompletionMessageParam[] = [
         {
             role: 'system',
@@ -88,7 +94,16 @@ You task is to read this and convert it into a normalized string form.
 2. Note where there are "template holes" things like f'Blah blah {{variable}}' that need to be filled in.
 3. Produce as output a single string where any template holes have been normalized to a placeholder like {{variable}}.
 4. Any variable that can't be resolved should be converted to a placeholder like {{variable}}.
+2. Note where there are "template holes" things like f'Blah blah {{variable}}' that need to be filled in.
+3. Produce as output a single string where any template holes have been normalized to a placeholder like {{variable}}.
+4. Any variable that can't be resolved should be converted to a placeholder like {{variable}}.
 5. Output only the normalized string, nothing else.
+6. If you encounter any problems fulfilling a request, you will start your response with \" I am sorry \"
+            `.trim(),
+        },
+        {
+            role: 'system',
+            content: `
 6. If you encounter any problems fulfilling a request, you will start your response with \" I am sorry \"
             `.trim(),
         },
@@ -97,6 +112,9 @@ You task is to read this and convert it into a normalized string form.
             content: `
 Here is the Python expression:
 \`\`\`python
+"The following is a conversation with an AI Customer Segment Recommender. \\
+  The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. \\
+  AI, please state a insightful observation about " + prompt_product_desc + "."
 "The following is a conversation with an AI Customer Segment Recommender. \\
   The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit. \\
   AI, please state a insightful observation about " + prompt_product_desc + "."
@@ -111,7 +129,20 @@ Here is the normalized string:
 The following is a conversation with an AI Customer Segment Recommender.
 The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.
 AI, please state a insightful observation about {{prompt_product_desc}}.
+            `.trim(),
+        },
+        {
+            role: 'system',
+            content: `
+The following is a conversation with an AI Customer Segment Recommender.
+The AI is insightful, verbose, and wise, and cares a lot about finding the product market fit.
+AI, please state a insightful observation about {{prompt_product_desc}}.
 \`\`\`
+            `.trim(),
+        },
+        {
+            role: 'user',
+            content: `
             `.trim(),
         },
         {
@@ -129,7 +160,23 @@ Here is the normalized string:
 
     const normalizedResponse = await sendChatRequest(
         messages,
+            `.trim(),
+        },
+    ];
+
+    const normalizedResponse = await sendChatRequest(
+        messages,
         {
+            temperature: 0.0,
+            stop: ['```'],
+            model: GPTModel.GPT3_5Turbo,
+        },
+        undefined,
+        false,
+        false
+    );
+
+    console.log(normalizedResponse);
             temperature: 0.0,
             stop: ['```'],
             model: GPTModel.GPT3_5Turbo,
@@ -454,6 +501,12 @@ export function canonizePromptWithTreeSitter(
                 ];
             }
         }
+        let tempStr = childrenValues?.join('');
+        if (tempStr?.endsWith('+"')) {
+            // remove the last concatenation operator
+            tempStr = tempStr.slice(0, -2);
+        }
+        return ['"' + tempStr + '"' || '', templateHoles];
         let tempStr = childrenValues?.join('');
         if (tempStr?.endsWith('+"')) {
             // remove the last concatenation operator
