@@ -48,10 +48,10 @@ export type PromptMetadata = {
     isSystemPrompt?: boolean;
     associatedSystemPrompts?: [PromptMetadata];
     selectedSystemPromptText?: string;
-    promptNode?: Parser.SyntaxNode;
-    isSystemPrompt?: boolean;
-    associatedSystemPrompts?: [PromptMetadata];
-    selectedSystemPromptText?: string;
+    // promptNode?: Parser.SyntaxNode;
+    // isSystemPrompt?: boolean;
+    // associatedSystemPrompts?: [PromptMetadata];
+    // selectedSystemPromptText?: string;
 };
 
 // This module defines a function, findPrompts, that takes
@@ -201,36 +201,6 @@ export const findPrompts = async (
                 });
                 // find all the prompts that are system prompts
                 // and associate them with the prompts that are not system prompts
-                const systemPrompts = results.filter(
-                    (prompt) => prompt.isSystemPrompt
-                );
-                const nonSystemPrompts = results.filter(
-                    (prompt) => !prompt.isSystemPrompt
-                );
-                for (const nonSystemPrompt of nonSystemPrompts) {
-                    for (const systemPrompt of systemPrompts) {
-                        if (
-                            nonSystemPrompt.associatedSystemPrompts ===
-                            undefined
-                        ) {
-                            nonSystemPrompt.associatedSystemPrompts = [
-                                systemPrompt,
-                            ];
-                        } else {
-                            nonSystemPrompt.associatedSystemPrompts.push(
-                                systemPrompt
-                            );
-                        }
-                    }
-                    if (
-                        nonSystemPrompt.associatedSystemPrompts !== undefined &&
-                        nonSystemPrompt.associatedSystemPrompts.length > 0
-                    ) {
-                        nonSystemPrompt.selectedSystemPromptText =
-                            nonSystemPrompt.selectedSystemPromptText =
-                                nonSystemPrompt.associatedSystemPrompts[0].normalizedText;
-                    }
-                }
 
                 return results;
             } catch (e) {

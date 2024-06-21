@@ -3,7 +3,7 @@
 // import the modules
 
 import { exit } from 'process';
-import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import checkRaceBias from '../modules/bias-modules/race-bias-module';
 import { PromptMetadata, PromptTemplateHole } from '../modules/prompt-finder';
 import { canonizeStringWithLLM } from '../modules/prompt-finder/canonization';
 import { getClient } from '../modules/LLMUtils';
@@ -93,7 +93,7 @@ async function processGenderBiasPromptSetCheck(
     }
     try {
         // patchHoles(tempPromptMeta);
-        let result = await checkGenderBias(
+        let result = await checkRaceBias(
             tempPromptMeta
             // create a new prompt metadata object with the prompt text and the prompt id
         );
@@ -142,7 +142,7 @@ async function main() {
     // console.log('current working directory: ', __dirname);
     // exit()
     // const data = fs.readFileSync(
-    //     __dirname + '/../data/runnable_prompts_ascii.json',
+    //     __dirname + '/../../data/runnable_prompts_ascii.json',
     //     'utf8'
     // );
     // const prompts = JSON.parse(data);
@@ -151,31 +151,31 @@ async function main() {
     // console.log('selecting random prompts');
     // const x = 5;
     const randomPromptsNoVar: string[] = JSON.parse(
-        fs.readFileSync('../data/random_prompts_no_var.json', 'utf8')
+        fs.readFileSync('../../data/random_prompts_no_var.json', 'utf8')
     );
     console.log('randomPromptsNoVar:', randomPromptsNoVar.length);
     const randomPromptsOneVar: string[] = JSON.parse(
-        fs.readFileSync('../data/random_prompts_one_var.json', 'utf8')
+        fs.readFileSync('../../data/random_prompts_one_var.json', 'utf8')
     );
     console.log('randomPromptsOneVar:', randomPromptsOneVar.length);
     const randomPromptsTwoVar: string[] = JSON.parse(
-        fs.readFileSync('../data/random_prompts_two_var.json', 'utf8')
+        fs.readFileSync('../../data/random_prompts_two_var.json', 'utf8')
     );
     console.log('randomPromptsTwoVar:', randomPromptsTwoVar.length);
     const randomPromptsThreeVar: string[] = JSON.parse(
-        fs.readFileSync('../data/random_prompts_three_var.json', 'utf8')
+        fs.readFileSync('../../data/random_prompts_three_var.json', 'utf8')
     );
     console.log('randomPromptsThreeVar:', randomPromptsThreeVar.length);
     const randomPromptsFourVar: string[] = JSON.parse(
-        fs.readFileSync('../data/random_prompts_four_var.json', 'utf8')
+        fs.readFileSync('../../data/random_prompts_four_var.json', 'utf8')
     );
     console.log('randomPromptsFourVar:', randomPromptsFourVar.length);
     const randomPromptsFiveVar: string[] = JSON.parse(
-        fs.readFileSync('../data/random_prompts_five_var.json', 'utf8')
+        fs.readFileSync('../../data/random_prompts_five_var.json', 'utf8')
     );
     console.log('randomPromptsFiveVar:', randomPromptsFiveVar.length);
     const randomPromptsFivePlusVar: string[] = JSON.parse(
-        fs.readFileSync('../data/random_prompts_five_plus_var.json', 'utf8')
+        fs.readFileSync('../../data/random_prompts_five_plus_var.json', 'utf8')
     );
     console.log('randomPromptsFivePlusVar:', randomPromptsFivePlusVar.length);
 
@@ -197,7 +197,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkGenderBias(
+    //         let result = await checkRaceBias(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -211,11 +211,15 @@ async function main() {
         return await processGenderBiasPromptSetCheck(prompt, ids_generated);
     });
     resultsNoVar = await Promise.all(genderCheckPromises_0);
-    if (fs.existsSync('./gender-bias-check-patched/results_no_var.json')) {
-        fs.unlinkSync('./gender-bias-check-patched/results_no_var.json');
+    if (
+        fs.existsSync('./results/gender-bias-check-patched/results_no_var.json')
+    ) {
+        fs.unlinkSync(
+            './results/gender-bias-check-patched/results_no_var.json'
+        );
     }
     fs.writeFileSync(
-        './gender-bias-check-patched/results_no_var.json',
+        './results/gender-bias-check-patched/results_no_var.json',
         JSON.stringify(resultsNoVar)
     );
     console.log('results for no var done');
@@ -228,7 +232,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkGenderBias(
+    //         let result = await checkRaceBias(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -242,11 +246,17 @@ async function main() {
         return await processGenderBiasPromptSetCheck(prompt, ids_generated);
     });
     resultsOneVar = await Promise.all(genderCheckPromises_1);
-    if (fs.existsSync('./gender-bias-check-patched/results_one_var.json')) {
-        fs.unlinkSync('./gender-bias-check-patched/results_one_var.json');
+    if (
+        fs.existsSync(
+            './results/gender-bias-check-patched/results_one_var.json'
+        )
+    ) {
+        fs.unlinkSync(
+            './results/gender-bias-check-patched/results_one_var.json'
+        );
     }
     fs.writeFileSync(
-        './gender-bias-check-patched/results_one_var.json',
+        './results/gender-bias-check-patched/results_one_var.json',
         JSON.stringify(resultsOneVar)
     );
     console.log('results for one var done');
@@ -259,7 +269,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkGenderBias(
+    //         let result = await checkRaceBias(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -273,11 +283,17 @@ async function main() {
         return await processGenderBiasPromptSetCheck(prompt, ids_generated);
     });
     resultsTwoVar = await Promise.all(genderCheckPromises_2);
-    if (fs.existsSync('./gender-bias-check-patched/results_two_var.json')) {
-        fs.unlinkSync('./gender-bias-check-patched/results_two_var.json');
+    if (
+        fs.existsSync(
+            './results/gender-bias-check-patched/results_two_var.json'
+        )
+    ) {
+        fs.unlinkSync(
+            './results/gender-bias-check-patched/results_two_var.json'
+        );
     }
     fs.writeFileSync(
-        './gender-bias-check-patched/results_two_var.json',
+        './results/gender-bias-check-patched/results_two_var.json',
         JSON.stringify(resultsTwoVar)
     );
     console.log('results for two var done');
@@ -290,7 +306,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkGenderBias(
+    //         let result = await checkRaceBias(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -304,11 +320,17 @@ async function main() {
         return await processGenderBiasPromptSetCheck(prompt, ids_generated);
     });
     resultsThreeVar = await Promise.all(genderCheckPromises_3);
-    if (fs.existsSync('./gender-bias-check-patched/results_three_var.json')) {
-        fs.unlinkSync('./gender-bias-check-patched/results_three_var.json');
+    if (
+        fs.existsSync(
+            './results/gender-bias-check-patched/results_three_var.json'
+        )
+    ) {
+        fs.unlinkSync(
+            './results/gender-bias-check-patched/results_three_var.json'
+        );
     }
     fs.writeFileSync(
-        './gender-bias-check-patched/results_three_var.json',
+        './results/gender-bias-check-patched/results_three_var.json',
         JSON.stringify(resultsThreeVar)
     );
     console.log('results for three var done');
@@ -321,7 +343,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkGenderBias(
+    //         let result = await checkRaceBias(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -335,11 +357,17 @@ async function main() {
         return await processGenderBiasPromptSetCheck(prompt, ids_generated);
     });
     resultsFourVar = await Promise.all(genderCheckPromises_4);
-    if (fs.existsSync('./gender-bias-check-patched/results_four_var.json')) {
-        fs.unlinkSync('./gender-bias-check-patched/results_four_var.json');
+    if (
+        fs.existsSync(
+            './results/gender-bias-check-patched/results_four_var.json'
+        )
+    ) {
+        fs.unlinkSync(
+            './results/gender-bias-check-patched/results_four_var.json'
+        );
     }
     fs.writeFileSync(
-        './gender-bias-check-patched/results_four_var.json',
+        './results/gender-bias-check-patched/results_four_var.json',
         JSON.stringify(resultsFourVar)
     );
     console.log('results for four var done');
@@ -352,7 +380,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkGenderBias(
+    //         let result = await checkRaceBias(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -366,11 +394,17 @@ async function main() {
         return await processGenderBiasPromptSetCheck(prompt, ids_generated);
     });
     resultsFiveVar = await Promise.all(genderCheckPromises_5);
-    if (fs.existsSync('./gender-bias-check-patched/results_five_var.json')) {
-        fs.unlinkSync('./gender-bias-check-patched/results_five_var.json');
+    if (
+        fs.existsSync(
+            './results/gender-bias-check-patched/results_five_var.json'
+        )
+    ) {
+        fs.unlinkSync(
+            './results/gender-bias-check-patched/results_five_var.json'
+        );
     }
     fs.writeFileSync(
-        './gender-bias-check-patched/results_five_var.json',
+        './results/gender-bias-check-patched/results_five_var.json',
         JSON.stringify(resultsFiveVar)
     );
     console.log('results for five var done');
@@ -383,7 +417,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkGenderBias(
+    //         let result = await checkRaceBias(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -394,9 +428,13 @@ async function main() {
     //     }
     // }
     if (
-        fs.existsSync('./gender-bias-check-patched/results_five_plus_var.json')
+        fs.existsSync(
+            './results/gender-bias-check-patched/results_five_plus_var.json'
+        )
     ) {
-        fs.unlinkSync('./gender-bias-check-patched/results_five_plus_var.json');
+        fs.unlinkSync(
+            './results/gender-bias-check-patched/results_five_plus_var.json'
+        );
     }
     const genderCheckPromises_6 = randomPromptsFivePlusVar.map(
         async (prompt) => {
@@ -405,7 +443,7 @@ async function main() {
     );
     resultsFivePlusVar = await Promise.all(genderCheckPromises_6);
     fs.writeFileSync(
-        './gender-bias-check-patched/results_five_plus_var.json',
+        './results/gender-bias-check-patched/results_five_plus_var.json',
         JSON.stringify(resultsFivePlusVar)
     );
     console.log('results for five plus var done');

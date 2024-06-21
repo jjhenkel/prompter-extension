@@ -3,11 +3,12 @@
 // import the modules
 
 import { exit } from 'process';
-import checkSexualityBias from '../modules/bias-modules/sexuality-bias-module';
+import checkVariableInjection from '../modules/injection-module/var-injection-module';
 import { PromptMetadata, PromptTemplateHole } from '../modules/prompt-finder';
 import { canonizeStringWithLLM } from '../modules/prompt-finder/canonization';
 import { getClient } from '../modules/LLMUtils';
 import readline from 'readline';
+import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 // load the data from the json file
 
 const fs = require('fs');
@@ -93,7 +94,7 @@ async function processGenderBiasPromptSetCheck(
     }
     try {
         // patchHoles(tempPromptMeta);
-        let result = await checkSexualityBias(
+        let result = await checkVariableInjection(
             tempPromptMeta
             // create a new prompt metadata object with the prompt text and the prompt id
         );
@@ -112,6 +113,23 @@ async function processGenderBiasPromptSetCheck(
 
 async function main() {
     let c = getClient();
+    let messages: ChatCompletionMessageParam[] = [
+        {
+            role: 'system',
+            content: '',
+        },
+        {
+            role: 'user',
+            content: 'Say Hi',
+        },
+    ];
+
+    let a = c?.chat.completions.create({
+        messages: messages,
+        model: 'gpt-4o',
+    });
+    console.log(a);
+    return 0;
     const ids_generated: string[] = [];
     // if API key not defined in current LLMConfig, ask for API key in console
     // if (
@@ -150,34 +168,42 @@ async function main() {
     // randomly select x prompts from prompt list
     // console.log('selecting random prompts');
     // const x = 5;
-    const randomPromptsNoVar: string[] = JSON.parse(
+    let randomPromptsNoVar: string[] = JSON.parse(
         fs.readFileSync('../../data/random_prompts_no_var.json', 'utf8')
     );
     console.log('randomPromptsNoVar:', randomPromptsNoVar.length);
-    const randomPromptsOneVar: string[] = JSON.parse(
+    let randomPromptsOneVar: string[] = JSON.parse(
         fs.readFileSync('../../data/random_prompts_one_var.json', 'utf8')
     );
     console.log('randomPromptsOneVar:', randomPromptsOneVar.length);
-    const randomPromptsTwoVar: string[] = JSON.parse(
+    let randomPromptsTwoVar: string[] = JSON.parse(
         fs.readFileSync('../../data/random_prompts_two_var.json', 'utf8')
     );
     console.log('randomPromptsTwoVar:', randomPromptsTwoVar.length);
-    const randomPromptsThreeVar: string[] = JSON.parse(
+    let randomPromptsThreeVar: string[] = JSON.parse(
         fs.readFileSync('../../data/random_prompts_three_var.json', 'utf8')
     );
     console.log('randomPromptsThreeVar:', randomPromptsThreeVar.length);
-    const randomPromptsFourVar: string[] = JSON.parse(
+    let randomPromptsFourVar: string[] = JSON.parse(
         fs.readFileSync('../../data/random_prompts_four_var.json', 'utf8')
     );
     console.log('randomPromptsFourVar:', randomPromptsFourVar.length);
-    const randomPromptsFiveVar: string[] = JSON.parse(
+    let randomPromptsFiveVar: string[] = JSON.parse(
         fs.readFileSync('../../data/random_prompts_five_var.json', 'utf8')
     );
     console.log('randomPromptsFiveVar:', randomPromptsFiveVar.length);
-    const randomPromptsFivePlusVar: string[] = JSON.parse(
+    let randomPromptsFivePlusVar: string[] = JSON.parse(
         fs.readFileSync('../../data/random_prompts_five_plus_var.json', 'utf8')
     );
     console.log('randomPromptsFivePlusVar:', randomPromptsFivePlusVar.length);
+    // slice the randomPrompts to the desired length of 10
+    randomPromptsNoVar = randomPromptsNoVar.slice(0, 1);
+    randomPromptsOneVar = randomPromptsOneVar.slice(0, 1);
+    randomPromptsTwoVar = randomPromptsTwoVar.slice(0, 1);
+    randomPromptsThreeVar = randomPromptsThreeVar.slice(0, 1);
+    randomPromptsFourVar = randomPromptsFourVar.slice(0, 1);
+    randomPromptsFiveVar = randomPromptsFiveVar.slice(0, 1);
+    randomPromptsFivePlusVar = randomPromptsFivePlusVar.slice(0, 1);
 
     //     // run variable injection check on each prompt set
     let resultsNoVar = [];
@@ -197,7 +223,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkSexualityBias(
+    //         let result = await checkVariableInjection(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -232,7 +258,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkSexualityBias(
+    //         let result = await checkVariableInjection(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -269,7 +295,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkSexualityBias(
+    //         let result = await checkVariableInjection(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -306,7 +332,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkSexualityBias(
+    //         let result = await checkVariableInjection(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -343,7 +369,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkSexualityBias(
+    //         let result = await checkVariableInjection(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -380,7 +406,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkSexualityBias(
+    //         let result = await checkVariableInjection(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -417,7 +443,7 @@ async function main() {
     //     tempPromptMeta.normalizedText = tup[0];
     //     tempPromptMeta.templateValues = tup[1];
     //     try {
-    //         let result = await checkSexualityBias(
+    //         let result = await checkVariableInjection(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );

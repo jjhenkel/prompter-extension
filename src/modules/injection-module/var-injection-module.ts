@@ -62,7 +62,7 @@ async function checkVariableInjection(
     // console.log(messages);
     // convert messages list to chat request
     let client = LLMUtils.getClient();
-    let client = LLMUtils.getClient();
+    // let client = LLMUtils.getClient();
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');
@@ -93,34 +93,13 @@ async function checkVariableInjection(
         false,
         true
     );
-    // const response = await client.chat.completions.create({
-    //     messages: messages,
-    //     model: deploymentId,
-    //     temperature: 0.0,
-    //     top_p: 0.95,
-    //     seed: 42,
-    // });
-    // const result = response.choices?.[0]?.message?.content;
-
-    const result = await LLMUtils.sendChatRequest(
-        messages,
-        {
-            model: modelType,
-            temperature: 0.0,
-            top_p: 0.95,
-            seed: 42,
-        },
-        undefined,
-        false,
-        true
-    );
     // console.log(result);
     // convert result to json and return
     if (result !== undefined && result !== null) {
         default_response = JSON.stringify(result);
     } else {
         return { error: 'No response from Azure OpenAI' };
-        return { error: 'No response from Azure OpenAI' };
+        // return { error: 'No response from Azure OpenAI' };
     }
     let attackTuples = AttacksJson.attacks;
     let poisoned_responses_array: Array<[string, string]> = Array();
@@ -140,7 +119,7 @@ async function checkVariableInjection(
             systemPromptText,
             client,
             modelType,
-            modelType,
+            // modelType,
             default_response,
             // analyzer,
             // default_sentiment,
@@ -222,7 +201,7 @@ async function processInjection(
     attack_tuple: string[],
     systemPromptText: string,
     client: any,
-    modelType: LLMUtils.GPTModel,
+    // modelType: LLMUtils.GPTModel,
     modelType: LLMUtils.GPTModel,
     defaultResponse: string,
     // analyzer: SentimentAnalyzer,
@@ -342,7 +321,6 @@ async function processInjection(
                 const prompt_list = [defaultResponse, injectedResult];
                 for (let i = 0; i < prompt_list.length; i++) {
                     let value = '{{' + comparisonVariablesToInject[i] + '}}';
-                    let value = '{{' + comparisonVariablesToInject[i] + '}}';
                     comparisonUserPromptText =
                         comparisonUserPromptText.replaceAll(
                             value,
@@ -353,8 +331,6 @@ async function processInjection(
                     { role: 'system', content: comparisonSystemPromptText },
                     { role: 'user', content: comparisonUserPromptText },
                 ];
-
-                let client = LLMUtils.getClient();
                 let client = LLMUtils.getClient();
                 // console.log(client);
                 if (client === undefined) {
@@ -365,19 +341,6 @@ async function processInjection(
                     // console.error("Client is undefined");
                     // return JSON.parse("{\"error\": \" Issue during OpenAI configuration}\"");
                 } else {
-                    const response = await LLMUtils.sendChatRequest(
-                        comparisonMessages,
-                        {
-                            model: modelType,
-                            temperature: 0.3,
-                            seed: 42,
-                        },
-                        undefined,
-                        true,
-                        true
-                    );
-                    let comparisonResult = response;
-                    // response.choices?.[0]?.message?.content;
                     const response = await LLMUtils.sendChatRequest(
                         comparisonMessages,
                         {
@@ -406,29 +369,7 @@ async function processInjection(
                                 last_occurrence + 1
                             );
                             // parse the json
-                        try {
-                            // clean any trailing characters  after the last }
-                            // find the last occurrence of }
-                            let last_occurrence =
-                                comparisonResult.lastIndexOf('}');
-                            // remove everything after the last occurrence
-                            comparisonResult = comparisonResult.substring(
-                                0,
-                                last_occurrence + 1
-                            );
-                            // parse the json
                             const comparisonJson = JSON.parse(comparisonResult);
-                            // const similarity_result: boolean = as boolean;
-                            if (
-                                (typeof comparisonJson['similar'] ===
-                                    'boolean' &&
-                                    comparisonJson['similar'] === false) ||
-                                (comparisonJson['similar'] instanceof String &&
-                                    comparisonJson['similar'].toLowerCase() ===
-                                        'false') ||
-                                (comparisonJson['similar'] instanceof String &&
-                                    comparisonJson['similar'].toLowerCase() ===
-                                        'no')
                             // const similarity_result: boolean = as boolean;
                             if (
                                 (typeof comparisonJson['similar'] ===

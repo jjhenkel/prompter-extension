@@ -3,7 +3,7 @@
 // import the modules
 
 import { exit } from 'process';
-import checkGenderBias from '../modules/bias-modules/gender-bias-module';
+import checkSexualityBias from '../modules/bias-modules/sexuality-bias-module';
 import { PromptMetadata } from '../modules/prompt-finder';
 // import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
 import {
@@ -14,43 +14,63 @@ import {
     setEndpoint,
 } from '../modules/LLMUtils';
 import readline from 'readline';
-import { parse } from 'csv-parse';
+// import { parse } from 'csv-parse';
 
-type sexism_data = {
-    id: string;
-    dataset: string;
+type hate_data = {
     text: string;
-    toxicity: string;
-    sexist: string;
-    of_id: string;
+    label: string;
 };
 
-async function load_csv(): Promise<sexism_data[]> {
-    const csvFilePath = '../data/baselines/sexism_data.csv';
-    const headers = ['id', 'dataset', 'text', 'toxicity', 'sexist', 'of_id'];
-    const fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
-    let sexism_data_rows: sexism_data[] = [];
-
-    return new Promise((resolve, reject) => {
-        parse(fileContent, {
-            delimiter: ',',
-            columns: headers,
-            cast: (value, context) => {
-                return value;
-            },
-        })
-            .on('data', (record: sexism_data) => {
-                sexism_data_rows.push(record);
-            })
-            .on('end', () => {
-                resolve(sexism_data_rows);
-            })
-            .on('error', (error) => {
-                reject(error);
-            });
+async function load_txt(): Promise<hate_data[]> {
+    const hateOneFilePath = '../../data/baselines/XHate999-EN-Gao-test.txt';
+    const hateTwoFilePath = '../../data/baselines/XHate999-EN-Trac-test.txt';
+    const hateThreeFilePath = '../../data/baselines/XHate999-EN-Wul-test.txt';
+    const fileContentOne = fs.readFileSync(hateOneFilePath, {
+        encoding: 'utf-8',
     });
-}
+    const fileContentTwo = fs.readFileSync(hateTwoFilePath, {
+        encoding: 'utf-8',
+    });
+    const fileContentThree = fs.readFileSync(hateThreeFilePath, {
+        encoding: 'utf-8',
+    });
+    let hate_data_rows: hate_data[] = [];
 
+    // read the first file line by line, columns are separated by tab
+    let lines = fileContentOne.split('\n');
+    for (let i = 1; i < lines.length; i++) {
+        let line = lines[i].split('\t');
+        if (line.length === 2) {
+            hate_data_rows.push({
+                text: line[0],
+                label: line[1],
+            });
+        }
+    }
+
+    let linesTwo = fileContentTwo.split('\n');
+    for (let i = 1; i < linesTwo.length; i++) {
+        let line = linesTwo[i].split('\t');
+        if (line.length === 2) {
+            hate_data_rows.push({
+                text: line[0],
+                label: line[1],
+            });
+        }
+    }
+    let linesThree = fileContentThree.split('\n');
+    for (let i = 1; i < linesThree.length; i++) {
+        let line = linesThree[i].split('\t');
+        if (line.length === 2) {
+            hate_data_rows.push({
+                text: line[0],
+                label: line[1],
+            });
+        }
+    }
+
+    return hate_data_rows;
+}
 const fs = require('fs');
 
 const rl = readline.createInterface({
@@ -71,7 +91,7 @@ main().finally(() => {
     rl.close(); // Close the readline interface
 });
 
-async function processGenderBiasCheckPrompt(prompt: sexism_data) {
+async function processGenderBiasCheckPrompt(prompt: hate_data) {
     let tempPromptMeta: PromptMetadata = {
         id: '0',
         rawText: prompt.text,
@@ -81,19 +101,20 @@ async function processGenderBiasCheckPrompt(prompt: sexism_data) {
     tempPromptMeta.normalizedText = JSON.stringify(tempPromptMeta.rawText);
     // tempPromptMeta.templateValues = tup[1];
     try {
-        let result = await checkGenderBias(
+        let result = await checkSexualityBias(
             tempPromptMeta
             // create a new prompt metadata object with the prompt text and the prompt id
         );
         // console.log(result);
-        console.log('Processed prompt: ' + prompt.id);
+        console.log('Processed prompt: ' + prompt.text);
         return {
-            id: prompt.id,
-            dataset: prompt.dataset,
+            // id: prompt.id,
+            // dataset: prompt.dataset,
             text: prompt.text,
-            toxicity: prompt.toxicity,
-            sexist: prompt.sexist,
-            of_id: prompt.of_id,
+            original_label: prompt.label,
+            // toxicity: prompt.toxicity,
+            // sexist: prompt.sexist,
+            // of_id: prompt.of_id,
             result: result,
         };
     } catch (e) {
@@ -105,7 +126,7 @@ async function main() {
     let c = getClient();
     setAPIKey(c?.apiKey!);
     setEndpoint(c?.baseURL!);
-    let prompts: sexism_data[] = await load_csv();
+    let prompts: hate_data[] = await load_txt();
 
     // if API key not defined in current LLMConfig, ask for API key in console
     if (
@@ -133,17 +154,17 @@ async function main() {
     }
 
     // read existing results_banchmark.json file, and extract the ids that were already processed
-    let existingResults = JSON.parse(
-        fs.readFileSync('results_benchmark.json', 'utf8')
-    );
-    let existingIds = existingResults.map((result: any) => result?.id);
-    existingResults = JSON.parse(
-        fs.readFileSync('results_benchmark-2.json', 'utf8')
-    );
-    // add the ids from the second file to the existingIds
-    existingIds = existingIds.concat(
-        existingResults.map((result: any) => result?.id)
-    );
+    // let existingResults = JSON.parse(
+    //     fs.readFileSync('results_benchmark.json', 'utf8')
+    // );
+    // let existingIds = existingResults.map((result: any) => result?.id);
+    // existingResults = JSON.parse(
+    //     fs.readFileSync('results_benchmark-2.json', 'utf8')
+    // );
+    // // add the ids from the second file to the existingIds
+    // existingIds = existingIds.concat(
+    //     existingResults.map((result: any) => result?.id)
+    // );
 
     let results_benchmark = [];
     // for (let i = 1; i < 11; i++) {
@@ -156,7 +177,7 @@ async function main() {
     //     // tempPromptMeta.templateValues = tup[1];
     //     try {
 
-    //         let result = await checkGenderBias(
+    //         let result = await checkSexualityBias(
     //             tempPromptMeta
     //             // create a new prompt metadata object with the prompt text and the prompt id
     //         );
@@ -175,32 +196,18 @@ async function main() {
     //     }
     // }
 
-    const genderCheckPromises = prompts.slice(1).map(async (prompt) => {
-        if (existingIds.includes(prompt.id)) {
-            return {
-                id: prompt.id,
-                dataset: prompt.dataset,
-                text: prompt.text,
-                toxicity: prompt.toxicity,
-                sexist: prompt.sexist,
-                of_id: prompt.of_id,
-                result: 'Already processed',
-            };
-        }
+    const sexualityCheckPromises = prompts.slice(1).map(async (prompt) => {
         return await processGenderBiasCheckPrompt(prompt);
     });
-    results_benchmark = await Promise.all(genderCheckPromises);
+    results_benchmark = await Promise.all(sexualityCheckPromises);
     // remove already processed prompts from the list
-    results_benchmark = results_benchmark.filter(
-        (result) => result?.result !== 'Already processed'
-    );
 
-    if (fs.existsSync('results_benchmark-3.json')) {
-        fs.unlinkSync('results_benchmark-3.json');
-    }
+    // if (fs.existsSync('results_benchmark-3.json')) {
+    //     fs.unlinkSync('results_benchmark-3.json');
+    // }
 
     fs.writeFileSync(
-        'results_benchmark-3.json',
+        'sexuality_bias_results_benchmark.json',
         JSON.stringify(results_benchmark)
     );
 

@@ -136,6 +136,11 @@ export function setAPIKey(APIKey: string) {
 }
 
 export function getClient() {
+    return new OpenAI({
+        baseURL: 'https://localhost:5001',
+        apiKey: 'dummy',
+    });
+
     if (configuration.LLM_Backend === Backend.Azure) {
         return getAzureClient();
     } else if (configuration.LLM_Backend === Backend.OpenAI) {
