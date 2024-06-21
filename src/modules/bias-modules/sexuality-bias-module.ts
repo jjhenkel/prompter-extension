@@ -5,20 +5,20 @@ import { PromptMetadata } from '../prompt-finder/index.js';
 import { patchHoles } from '../prompt-finder/hole-patching.js';
 import path from 'path';
 
-export type RaceBiasResult = {
+export type SexualityBiasResult = {
     error?: string;
-    race_biased?: boolean;
-    may_cause_race_bias?: boolean;
+    sexuality_biased?: boolean;
+    may_cause_sexuality_bias?: boolean;
     reasoning?: string;
 };
 
-async function checkRaceBias(
+async function checkSexualityBias(
     inputPrompt: PromptMetadata,
     useSystemPrompt: boolean = true
-): Promise<RaceBiasResult> {
+): Promise<SexualityBiasResult> {
     // load prompt from yaml file
     let serializedPrompts = PromptUtils.loadPromptsFromYaml(
-        path.resolve(__dirname, 'race_prompt.yaml')
+        path.resolve(__dirname, 'sexuality_prompt.yaml')
     );
 
     let userPromptObject = PromptUtils.getPromptsOfRole(
@@ -108,4 +108,4 @@ async function checkRaceBias(
     }
 }
 
-export default checkRaceBias;
+export default checkSexualityBias;
