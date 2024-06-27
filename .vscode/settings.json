@@ -11,5 +11,9 @@
     "cSpell.words": [
         "copyfiles",
         "vectorize"
-    ]
+    ],
+    "vscode-nmake-tools.workspaceBuildDirectories": [
+        "."
+    ],
+    "sarif-viewer.connectToGithubCodeScanning": "off"
 }

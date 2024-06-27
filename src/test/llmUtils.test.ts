@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 
 import * as LLMUtils from '../modules/LLMUtils';
 import { Backend, GPTModel } from '../modules/LLMUtils';
-import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI from 'openai';
 
 const extensionUri = __dirname.split('\\').slice(0, -2).join('/');

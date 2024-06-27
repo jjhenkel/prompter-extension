@@ -27,7 +27,6 @@
         "name": "Prompter",
         "description": "Let's analyze and improve some prompts",
         "isSticky": true,
-        "isSticky": true,
         "commands": [
           {
             "name": "find-prompts",
@@ -85,7 +84,6 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "watch-cp": "tscp -w",
-    "watch-cp": "tscp -w",
     "pretest": "yarn run compile && yarn run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
@@ -113,6 +111,8 @@
     "typescript-cp": "^0.1.9"
   },
   "dependencies": {
+    "@azure/identity": "^4.3.0",
+    "@azure/openai": "^1.0.0-beta.12",
     "@types/js-yaml": "^4.0.9",
     "@types/object-hash": "^3.0.6",
     "@types/sprintf-js": "^1.1.4",
@@ -125,7 +125,6 @@
     "openai": "^4.28.0",
     "sprintf-js": "^1.1.3",
     "string-comparison": "^1.3.0",
-    "ts-retry": "^4.2.5",
     "ts-retry": "^4.2.5",
     "web-tree-sitter": "^0.21.0"
   },

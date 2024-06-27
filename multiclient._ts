@@ -1,0 +1,157 @@
+// yarn add @azure/identity @openai/azure  
+import { AzureCliCredential } from "@azure/identity";  
+import { AzureOpenAI, OpenAIError, RateLimitError } from  "@openai/azure";  
+import { getBearerTokenProvider } from "@azure/identity";  // Assuming this function is available in the Azure SDK for TypeScript  
+  
+interface ExceptionHistory {  
+  exception: Error;  
+  endpoint: string;  
+}  
+  
+class MultiClientException extends Error {  
+  public exceptionHistory: Error[];  
+  public endpointHistory: string[];  
+  
+  constructor(history: ExceptionHistory[]) {  
+    super("All clients failed to respond to the request.");  
+    this.exceptionHistory = history.map(({ exception }) => exception);  
+    this.endpointHistory = history.map(({ endpoint }) => endpoint);  
+  }  
+}  
+  
+class MultiClient {  
+  static BACKOFF_MAX_JITTER = 1000;  
+  private endpoints: string[];  
+  private maxRetries: number;  
+  private backoffFactor: number;  
+  private apiVersion: string;  
+  private currentClientIndex: number;  
+  private clients: AzureOpenAI[];  
+  
+  constructor(  
+    endpoints: string[],  
+    maxRetries: number = 3,  
+    backoffFactor: number = 2,  
+    apiVersion: string = "2024-02-01"  
+  ) {  
+    this.endpoints = endpoints;  
+    this.maxRetries = maxRetries;  
+    this.backoffFactor = backoffFactor;  
+    this.apiVersion = apiVersion;  
+    this.currentClientIndex = 0;  
+    this.clients = this.initializeClients(endpoints);  
+    this.wrapClientMethods();  
+  }  
+  
+  private currentEndpoint(): string {  
+    return this.endpoints[this.currentClientIndex];  
+  }  
+  
+  private initializeClients(endpoints: string[]): AzureOpenAI[] {  
+    const clients: AzureOpenAI[] = [];  
+    endpoints.forEach((endpoint) => {  
+      try {  
+        const client = new AzureOpenAI({  
+          apiVersion: this.apiVersion,  
+          azureEndpoint: endpoint,  
+          azureAdTokenProvider: getBearerTokenProvider(  
+            new AzureCliCredential(),  
+            "https://cognitiveservices.azure.com/.default"  
+          ),  
+        });  
+        clients.push(client);  
+      } catch (e) {  
+        console.error(`Failed to initialize client for endpoint ${endpoint}:`, e);  
+      }  
+    });  
+    return clients;  
+  }  
+  
+  private wrapClientMethods(): void {  
+    this.clients.forEach((client) => {  
+      // Assuming TypeScript allows dynamic method assignments  
+      (client as any).chat.completions.create_i = client.chat.completions.create;  
+    });  
+  }  
+  
+  private switchClient(): void {  
+    this.currentClientIndex = (this.currentClientIndex + 1) % this.clients.length;  
+  }  
+  
+  private async makeRequest(method: string = "chat.completions.create", ...args: any[]): Promise<any> {  
+    const history: ExceptionHistory[] = [];  
+    for (let attempt = 0; attempt < this.maxRetries; attempt++) {  
+      for (const _ of this.clients) {  
+        const client = this.clients[this.currentClientIndex];  
+        // Parse method and dynamically get the client method  
+        const methodParts = method.split(".");  
+        let func: any = client;  
+        for (const part of methodParts) {  
+          func = func[part];  
+          if (!func) {  
+            throw new Error(`Method ${method} not found on AzureOpenAI client.`);  
+          }  
+        }  
+        try {  
+          return await func(...args);  
+        } catch (e) {  
+          if (e instanceof RateLimitError || e instanceof OpenAIError) {  
+            this.handleException(e, history, attempt);  
+            break;  
+          } else {  
+            this.handleGeneralException(e, history, attempt);  
+            break;  
+          }  
+        }  
+      }  
+    }  
+    throw new MultiClientException(history);  
+  }  
+  
+  private handleException(e: Error, history: ExceptionHistory[], attempt: number): void {  
+    history.push({ exception: e, endpoint: this.currentEndpoint() });  
+    this.switchClient();  
+    setTimeout(() => {}, this.calculateBackoffTime(attempt));  
+  }  
+  
+  private handleGeneralException(e: Error, history: ExceptionHistory[], attempt: number): void {  
+    if (e.message.includes("429")) {  
+      this.handleException(e, history, attempt);  
+    } else {  
+      console.error("Unknown Exception:", e);  
+      console.error("Exception History:");  
+      history.forEach((ex, i) => {  
+        console.error(`Exception ${i}: ${ex.exception} at endpoint ${ex.endpoint}`);  
+      });  
+      this.handleException(e, history, attempt);  
+    }  
+  }  
+  
+  private calculateBackoffTime(attempt: number): number {  
+    return this.backoffFactor ** attempt + Math.random() * MultiClient.BACKOFF_MAX_JITTER;  
+  }  
+  
+  get chat() {  
+    return this;  
+  }  
+  
+  get completions() {  
+    return this;  
+  }  
+  
+  create(...args: any[]): Promise<any> {  
+    return this.makeRequest("chat.completions.create", ...args);  
+  }  
+}  
+  
+// Default client for the package  
+const defaultClient = new MultiClient([  
+  "https://gsl-azoai-1.openai.azure.com/",  
+  "https://gsl-azoai-2.openai.azure.com/",  
+  "https://gsl-azoai-3.openai.azure.com/",  
+  "https://gsl-azoai-4.openai.azure.com/",  
+  "https://gsl-azoai-8.openai.azure.com/",  
+  "https://gsl-azoai-9.openai.azure.com/",  
+]);  
+  
+export default defaultClient;  

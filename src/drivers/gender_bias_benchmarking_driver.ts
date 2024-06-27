@@ -6,13 +6,7 @@ import { exit } from 'process';
 import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import { PromptMetadata } from '../modules/prompt-finder';
 // import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
-import {
-    getAPIKey,
-    getClient,
-    getEndpoint,
-    setAPIKey,
-    setEndpoint,
-} from '../modules/LLMUtils';
+
 import readline from 'readline';
 import { parse } from 'csv-parse';
 
@@ -26,7 +20,7 @@ type sexism_data = {
 };
 
 async function load_csv(): Promise<sexism_data[]> {
-    const csvFilePath = '../data/baselines/sexism_data.csv';
+    const csvFilePath = '../../data/baselines/sexism_data.csv';
     const headers = ['id', 'dataset', 'text', 'toxicity', 'sexist', 'of_id'];
     const fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
     let sexism_data_rows: sexism_data[] = [];
@@ -102,48 +96,48 @@ async function processGenderBiasCheckPrompt(prompt: sexism_data) {
 }
 
 async function main() {
-    let c = getClient();
-    setAPIKey(c?.apiKey!);
-    setEndpoint(c?.baseURL!);
+    // let c = getClient();
+    // setAPIKey(c?.apiKey!);
+    // setEndpoint(c?.baseURL!);
     let prompts: sexism_data[] = await load_csv();
 
     // if API key not defined in current LLMConfig, ask for API key in console
-    if (
-        getAPIKey() === undefined ||
-        getAPIKey() === '' ||
-        getAPIKey() === null
-    ) {
-        console.log('API key not found in LLMConfig. ');
-        const apiKey = await readFromConsole(
-            'Please enter your OpenAI API key: '
-        );
-        setAPIKey(apiKey);
-    }
+    // if (
+    //     getAPIKey() === undefined ||
+    //     getAPIKey() === '' ||
+    //     getAPIKey() === null
+    // ) {
+    //     console.log('API key not found in LLMConfig. ');
+    //     const apiKey = await readFromConsole(
+    //         'Please enter your OpenAI API key: '
+    //     );
+    //     setAPIKey(apiKey);
+    // }
 
-    if (
-        getEndpoint() === undefined ||
-        getEndpoint() === '' ||
-        getEndpoint() === null
-    ) {
-        console.log('Endpoint not found in LLMConfig. ');
-        const endpoint = await readFromConsole(
-            'Please enter your OpenAI Endpoint: '
-        );
-        setEndpoint(endpoint);
-    }
+    // if (
+    //     getEndpoint() === undefined ||
+    //     getEndpoint() === '' ||
+    //     getEndpoint() === null
+    // ) {
+    //     console.log('Endpoint not found in LLMConfig. ');
+    //     const endpoint = await readFromConsole(
+    //         'Please enter your OpenAI Endpoint: '
+    //     );
+    //     setEndpoint(endpoint);
+    // }
 
     // read existing results_banchmark.json file, and extract the ids that were already processed
-    let existingResults = JSON.parse(
-        fs.readFileSync('results_benchmark.json', 'utf8')
-    );
-    let existingIds = existingResults.map((result: any) => result?.id);
-    existingResults = JSON.parse(
-        fs.readFileSync('results_benchmark-2.json', 'utf8')
-    );
-    // add the ids from the second file to the existingIds
-    existingIds = existingIds.concat(
-        existingResults.map((result: any) => result?.id)
-    );
+    // let existingResults = JSON.parse(
+    //     fs.readFileSync('results_benchmark.json', 'utf8')
+    // );
+    // let existingIds = existingResults.map((result: any) => result?.id);
+    // existingResults = JSON.parse(
+    //     fs.readFileSync('results_benchmark-2.json', 'utf8')
+    // );
+    // // add the ids from the second file to the existingIds
+    // existingIds = existingIds.concat(
+    //     existingResults.map((result: any) => result?.id)
+    // );
 
     let results_benchmark = [];
     // for (let i = 1; i < 11; i++) {
@@ -176,31 +170,31 @@ async function main() {
     // }
 
     const genderCheckPromises = prompts.slice(1).map(async (prompt) => {
-        if (existingIds.includes(prompt.id)) {
-            return {
-                id: prompt.id,
-                dataset: prompt.dataset,
-                text: prompt.text,
-                toxicity: prompt.toxicity,
-                sexist: prompt.sexist,
-                of_id: prompt.of_id,
-                result: 'Already processed',
-            };
-        }
+        // if (existingIds.includes(prompt.id)) {
+        //     return {
+        //         id: prompt.id,
+        //         dataset: prompt.dataset,
+        //         text: prompt.text,
+        //         toxicity: prompt.toxicity,
+        //         sexist: prompt.sexist,
+        //         of_id: prompt.of_id,
+        //         result: 'Already processed',
+        //     };
+        // }
         return await processGenderBiasCheckPrompt(prompt);
     });
     results_benchmark = await Promise.all(genderCheckPromises);
     // remove already processed prompts from the list
-    results_benchmark = results_benchmark.filter(
-        (result) => result?.result !== 'Already processed'
-    );
+    // results_benchmark = results_benchmark.filter(
+    //     (result) => result?.result !== 'Already processed'
+    // );
 
-    if (fs.existsSync('results_benchmark-3.json')) {
-        fs.unlinkSync('results_benchmark-3.json');
-    }
+    // if (fs.existsSync('results_benchmark-3.json')) {
+    //     fs.unlinkSync('results_benchmark-3.json');
+    // }
 
     fs.writeFileSync(
-        'results_benchmark-3.json',
+        'results/results_gender_benchmark.json',
         JSON.stringify(results_benchmark)
     );
 

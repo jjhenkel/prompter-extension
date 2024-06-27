@@ -1,4 +1,4 @@
-import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { ChatCompletionMessageParam } from 'openai/resources';
 import * as utils from '../LLMUtils';
 import * as PromptUtils from '../PromptUtils';
 // import * as vscode from 'vscode';

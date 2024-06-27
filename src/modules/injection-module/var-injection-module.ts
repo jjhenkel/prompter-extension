@@ -1,4 +1,4 @@
-import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { ChatCompletionMessageParam } from 'openai/resources';
 import * as LLMUtils from '../LLMUtils';
 // import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import PromptJson from './var-injection-prompt-1.json';

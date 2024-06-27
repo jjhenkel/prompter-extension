@@ -5,7 +5,7 @@ import Parser from 'web-tree-sitter';
 import * as fs from 'fs';
 import { vsprintf } from 'sprintf-js';
 import { GPTModel, sendChatRequest } from '../LLMUtils';
-import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { ChatCompletionMessageParam } from 'openai/resources';
 // import * as vscode from 'vscode';
 
 export async function canonizeWithTreeSitterANDCopilotGPT(

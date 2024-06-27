@@ -8,7 +8,7 @@ import { PromptMetadata, PromptTemplateHole } from '../modules/prompt-finder';
 import { canonizeStringWithLLM } from '../modules/prompt-finder/canonization';
 import { getClient } from '../modules/LLMUtils';
 import readline from 'readline';
-import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { ChatCompletionMessageParam } from 'openai/resources';
 // load the data from the json file
 
 const fs = require('fs');
