@@ -200,7 +200,7 @@ const list_of_azure_endpoints = [
     'https://gsl-azoai-9.openai.azure.com/',
 ];
 
-let maxRetries = 10;
+let maxRetries = 3;
 
 const apiVersion: string = '2024-02-01';
 
@@ -312,7 +312,7 @@ function _handleGeneralException(e: any, attempt: number): void {
     if (JSON.stringify(e).includes('429')) {
         _handleException(e, attempt);
     } else {
-        console.error('Unknown Exception:', e);
+        // console.error('Unknown Exception:', e);
         //   console.error("Exception History:");
         //   history.forEach((ex, i) => {
         // console.error(`Exception ${i}: ${ex.exception} at endpoint ${ex.endpoint}`);
@@ -419,8 +419,8 @@ export async function cleanJson(result: any): Promise<string> {
         result = prettier.format(result, { parser: 'json' });
     } catch (e) {
         console.error('Error formatting JSON');
-        console.log(e);
-        console.log(result);
+        // console.log(e);
+        // console.log(result);
     }
     return result;
 }

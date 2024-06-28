@@ -7,7 +7,6 @@ import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import { PromptMetadata } from '../modules/prompt-finder';
 // import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
 
-import readline from 'readline';
 import { parse } from 'csv-parse';
 
 type sexism_data = {
@@ -47,23 +46,23 @@ async function load_csv(): Promise<sexism_data[]> {
 
 const fs = require('fs');
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
+// const rl = readline.createInterface({
+//     input: process.stdin,
+//     output: process.stdout,
+// });
 
-function readFromConsole(prompt: string): Promise<string> {
-    return new Promise((resolve) => {
-        rl.question(prompt, (answer) => {
-            resolve(answer);
-            // rl.close();
-        });
-    });
-}
+// function readFromConsole(prompt: string): Promise<string> {
+//     return new Promise((resolve) => {
+//         rl.question(prompt, (answer) => {
+//             resolve(answer);
+//             // rl.close();
+//         });
+//     });
+// }
 
-main().finally(() => {
-    rl.close(); // Close the readline interface
-});
+// main().finally(() => {
+//     rl.close(); // Close the readline interface
+// });
 
 async function processGenderBiasCheckPrompt(prompt: sexism_data) {
     let tempPromptMeta: PromptMetadata = {
@@ -189,9 +188,9 @@ async function main() {
     //     (result) => result?.result !== 'Already processed'
     // );
 
-    // if (fs.existsSync('results_benchmark-3.json')) {
-    //     fs.unlinkSync('results_benchmark-3.json');
-    // }
+    if (fs.existsSync('results/results_gender_benchmark.json')) {
+        fs.unlinkSync('results/results_gender_benchmark.json');
+    }
 
     fs.writeFileSync(
         'results/results_gender_benchmark.json',
