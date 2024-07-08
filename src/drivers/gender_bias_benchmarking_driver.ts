@@ -6,7 +6,7 @@ import { exit } from 'process';
 import checkGenderBias from '../modules/bias-modules/gender-bias-module';
 import { PromptMetadata } from '../modules/prompt-finder';
 // import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
-
+import * as LLMUtils from '../modules/LLMUtils';
 import { parse } from 'csv-parse';
 
 type sexism_data = {
@@ -95,6 +95,11 @@ async function processGenderBiasCheckPrompt(prompt: sexism_data) {
 }
 
 async function main() {
+    let a = await LLMUtils.main();
+    if (a !== 'done') {
+        console.log('Error in LLMUtils');
+        exit();
+    }
     // let c = getClient();
     // setAPIKey(c?.apiKey!);
     // setEndpoint(c?.baseURL!);
@@ -217,4 +222,6 @@ function getRandomElements(arr_original: string[], n: number): string[] {
     return shuffled.slice(0, n);
 }
 
-main();
+main().then(() => {
+    console.log('done');
+});

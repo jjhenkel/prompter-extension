@@ -1,8 +1,8 @@
-import { ChatCompletionMessageParam } from 'openai/resources';
-import * as utils from '../LLMUtils.js';
-import * as PromptUtils from '../PromptUtils.js';
-import { PromptMetadata } from '../prompt-finder/index.js';
-import { patchHoles } from '../prompt-finder/hole-patching.js';
+import { ChatCompletionMessageParam } from 'openai/resources/index';
+import * as utils from '../LLMUtils';
+import * as PromptUtils from '../PromptUtils';
+import { PromptMetadata } from '../prompt-finder/index';
+import { patchHoles } from '../prompt-finder/hole-patching';
 import path from 'path';
 
 export type RaceBiasResult = {
@@ -73,7 +73,7 @@ async function checkRaceBias(
 
     // console.log(messages);
     // convert messages list to chat request
-    let client = utils.getClient();
+    let client = await utils.getClient();
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');

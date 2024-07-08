@@ -6,7 +6,8 @@ import { exit } from 'process';
 import checkSexualityBias from '../modules/bias-modules/sexuality-bias-module';
 import { PromptMetadata, PromptTemplateHole } from '../modules/prompt-finder';
 import { canonizeStringWithLLM } from '../modules/prompt-finder/canonization';
-import { getClient } from '../modules/LLMUtils';
+// import { getClient } from '../modules/LLMUtils';
+import * as LLMUtils from '../modules/LLMUtils';
 import readline from 'readline';
 // load the data from the json file
 
@@ -111,8 +112,13 @@ async function processGenderBiasPromptSetCheck(
 }
 
 async function main() {
-    let c = getClient();
+    // let c = getClient();
     const ids_generated: string[] = [];
+    let a = await LLMUtils.main();
+    if (a !== 'done') {
+        console.log('Error in LLMUtils');
+        exit();
+    }
     // if API key not defined in current LLMConfig, ask for API key in console
     // if (
     //     getAPIKey() === undefined ||
@@ -212,14 +218,16 @@ async function main() {
     });
     resultsNoVar = await Promise.all(genderCheckPromises_0);
     if (
-        fs.existsSync('./results/gender-bias-check-patched/results_no_var.json')
+        fs.existsSync(
+            './results/sexuality-bias-check-patched/results_no_var.json'
+        )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_no_var.json'
+            './results/sexuality-bias-check-patched/results_no_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_no_var.json',
+        './results/sexuality-bias-check-patched/results_no_var.json',
         JSON.stringify(resultsNoVar)
     );
     console.log('results for no var done');
@@ -248,15 +256,15 @@ async function main() {
     resultsOneVar = await Promise.all(genderCheckPromises_1);
     if (
         fs.existsSync(
-            './results/gender-bias-check-patched/results_one_var.json'
+            './results/sexuality-bias-check-patched/results_one_var.json'
         )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_one_var.json'
+            './results/sexuality-bias-check-patched/results_one_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_one_var.json',
+        './results/sexuality-bias-check-patched/results_one_var.json',
         JSON.stringify(resultsOneVar)
     );
     console.log('results for one var done');
@@ -285,15 +293,15 @@ async function main() {
     resultsTwoVar = await Promise.all(genderCheckPromises_2);
     if (
         fs.existsSync(
-            './results/gender-bias-check-patched/results_two_var.json'
+            './results/sexuality-bias-check-patched/results_two_var.json'
         )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_two_var.json'
+            './results/sexuality-bias-check-patched/results_two_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_two_var.json',
+        './results/sexuality-bias-check-patched/results_two_var.json',
         JSON.stringify(resultsTwoVar)
     );
     console.log('results for two var done');
@@ -322,15 +330,15 @@ async function main() {
     resultsThreeVar = await Promise.all(genderCheckPromises_3);
     if (
         fs.existsSync(
-            './results/gender-bias-check-patched/results_three_var.json'
+            './results/sexuality-bias-check-patched/results_three_var.json'
         )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_three_var.json'
+            './results/sexuality-bias-check-patched/results_three_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_three_var.json',
+        './results/sexuality-bias-check-patched/results_three_var.json',
         JSON.stringify(resultsThreeVar)
     );
     console.log('results for three var done');
@@ -359,15 +367,15 @@ async function main() {
     resultsFourVar = await Promise.all(genderCheckPromises_4);
     if (
         fs.existsSync(
-            './results/gender-bias-check-patched/results_four_var.json'
+            './results/sexuality-bias-check-patched/results_four_var.json'
         )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_four_var.json'
+            './results/sexuality-bias-check-patched/results_four_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_four_var.json',
+        './results/sexuality-bias-check-patched/results_four_var.json',
         JSON.stringify(resultsFourVar)
     );
     console.log('results for four var done');
@@ -396,15 +404,15 @@ async function main() {
     resultsFiveVar = await Promise.all(genderCheckPromises_5);
     if (
         fs.existsSync(
-            './results/gender-bias-check-patched/results_five_var.json'
+            './results/sexuality-bias-check-patched/results_five_var.json'
         )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_five_var.json'
+            './results/sexuality-bias-check-patched/results_five_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_five_var.json',
+        './results/sexuality-bias-check-patched/results_five_var.json',
         JSON.stringify(resultsFiveVar)
     );
     console.log('results for five var done');
@@ -429,11 +437,11 @@ async function main() {
     // }
     if (
         fs.existsSync(
-            './results/gender-bias-check-patched/results_five_plus_var.json'
+            './results/sexuality-bias-check-patched/results_five_plus_var.json'
         )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_five_plus_var.json'
+            './results/sexuality-bias-check-patched/results_five_plus_var.json'
         );
     }
     const genderCheckPromises_6 = randomPromptsFivePlusVar.map(
@@ -443,7 +451,7 @@ async function main() {
     );
     resultsFivePlusVar = await Promise.all(genderCheckPromises_6);
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_five_plus_var.json',
+        './results/sexuality-bias-check-patched/results_five_plus_var.json',
         JSON.stringify(resultsFivePlusVar)
     );
     console.log('results for five plus var done');

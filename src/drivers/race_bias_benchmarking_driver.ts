@@ -5,14 +5,15 @@
 import { exit } from 'process';
 import checkRaceBias from '../modules/bias-modules/race-bias-module';
 import { PromptMetadata } from '../modules/prompt-finder';
-// import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
-import {
-    getAPIKey,
-    getClient,
-    getEndpoint,
-    setAPIKey,
-    setEndpoint,
-} from '../modules/LLMUtils';
+// import { canonizeStringWithLLM } from './modules/prompt-finder/canonization
+import * as LLMUtils from '../modules/LLMUtils';
+// import {
+//     getAPIKey,
+//     getClient,
+//     getEndpoint,
+//     setAPIKey,
+//     setEndpoint,
+// } from '../modules/LLMUtils';
 import readline from 'readline';
 // import { parse } from 'csv-parse';
 
@@ -79,18 +80,18 @@ const rl = readline.createInterface({
     output: process.stdout,
 });
 
-function readFromConsole(prompt: string): Promise<string> {
-    return new Promise((resolve) => {
-        rl.question(prompt, (answer) => {
-            resolve(answer);
-            // rl.close();
-        });
-    });
-}
+// function readFromConsole(prompt: string): Promise<string> {
+//     return new Promise((resolve) => {
+//         rl.question(prompt, (answer) => {
+//             resolve(answer);
+//             // rl.close();
+//         });
+//     });
+// }
 
-main().finally(() => {
-    rl.close(); // Close the readline interface
-});
+// main().finally(() => {
+//     rl.close(); // Close the readline interface
+// });
 
 async function processRaceBiasCheckPrompt(prompt: hate_data) {
     let tempPromptMeta: PromptMetadata = {
@@ -124,35 +125,40 @@ async function processRaceBiasCheckPrompt(prompt: hate_data) {
 }
 
 async function main() {
-    let c = getClient();
-    setAPIKey(c?.apiKey!);
-    setEndpoint(c?.baseURL!);
+    // let c = getClient();
+    // setAPIKey(c?.apiKey!);
+    // setEndpoint(c?.baseURL!);
+    let a = await LLMUtils.main();
+    if (a !== 'done') {
+        console.log('Error in LLMUtils');
+        exit();
+    }
     let prompts: hate_data[] = await load_txt();
-
+    // prompts = prompts.slice(0, 10);
     // if API key not defined in current LLMConfig, ask for API key in console
-    if (
-        getAPIKey() === undefined ||
-        getAPIKey() === '' ||
-        getAPIKey() === null
-    ) {
-        console.log('API key not found in LLMConfig. ');
-        const apiKey = await readFromConsole(
-            'Please enter your OpenAI API key: '
-        );
-        setAPIKey(apiKey);
-    }
+    // if (
+    //     getAPIKey() === undefined ||
+    //     getAPIKey() === '' ||
+    //     getAPIKey() === null
+    // ) {
+    //     console.log('API key not found in LLMConfig. ');
+    //     const apiKey = await readFromConsole(
+    //         'Please enter your OpenAI API key: '
+    //     );
+    //     setAPIKey(apiKey);
+    // }
 
-    if (
-        getEndpoint() === undefined ||
-        getEndpoint() === '' ||
-        getEndpoint() === null
-    ) {
-        console.log('Endpoint not found in LLMConfig. ');
-        const endpoint = await readFromConsole(
-            'Please enter your OpenAI Endpoint: '
-        );
-        setEndpoint(endpoint);
-    }
+    // if (
+    //     getEndpoint() === undefined ||
+    //     getEndpoint() === '' ||
+    //     getEndpoint() === null
+    // ) {
+    //     console.log('Endpoint not found in LLMConfig. ');
+    //     const endpoint = await readFromConsole(
+    //         'Please enter your OpenAI Endpoint: '
+    //     );
+    //     setEndpoint(endpoint);
+    // }
 
     // read existing results_banchmark.json file, and extract the ids that were already processed
     // let existingResults = JSON.parse(
@@ -203,8 +209,12 @@ async function main() {
     results_benchmark = await Promise.all(raceCheckPromises);
     // remove already processed prompts from the list
 
+    if (fs.existsSync('results/race_bias_results_benchmark.json')) {
+        fs.unlinkSync('results/race_bias_results_benchmark.json');
+    }
+
     fs.writeFileSync(
-        'race_bias_results_benchmark.json',
+        'results/race_bias_results_benchmark.json',
         JSON.stringify(results_benchmark)
     );
 

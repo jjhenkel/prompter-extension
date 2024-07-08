@@ -1,4 +1,4 @@
-import { ChatCompletionMessageParam } from 'openai/resources';
+import { ChatCompletionMessageParam } from 'openai/resources/index';
 import * as utils from '../LLMUtils';
 import * as PromptUtils from '../PromptUtils';
 import { PromptMetadata } from '../prompt-finder/index';
@@ -75,7 +75,7 @@ async function checkGenderBias(
 
     // console.log(messages);
     // convert messages list to chat request
-    let client = utils.getClient();
+    let client = await utils.getClient();
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');

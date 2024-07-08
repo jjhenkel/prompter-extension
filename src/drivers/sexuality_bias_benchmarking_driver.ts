@@ -6,13 +6,14 @@ import { exit } from 'process';
 import checkSexualityBias from '../modules/bias-modules/sexuality-bias-module';
 import { PromptMetadata } from '../modules/prompt-finder';
 // import { canonizeStringWithLLM } from './modules/prompt-finder/canonization';
-import {
-    getAPIKey,
-    getClient,
-    getEndpoint,
-    setAPIKey,
-    setEndpoint,
-} from '../modules/LLMUtils';
+// import {
+//     getAPIKey,
+//     getClient,
+//     getEndpoint,
+//     setAPIKey,
+//     setEndpoint,
+// } from '../modules/LLMUtils';
+import * as LLMUtils from '../modules/LLMUtils';
 import readline from 'readline';
 // import { parse } from 'csv-parse';
 
@@ -78,18 +79,18 @@ const rl = readline.createInterface({
     output: process.stdout,
 });
 
-function readFromConsole(prompt: string): Promise<string> {
-    return new Promise((resolve) => {
-        rl.question(prompt, (answer) => {
-            resolve(answer);
-            // rl.close();
-        });
-    });
-}
+// function readFromConsole(prompt: string): Promise<string> {
+//     return new Promise((resolve) => {
+//         rl.question(prompt, (answer) => {
+//             resolve(answer);
+//             // rl.close();
+//         });
+//     });
+// }
 
-main().finally(() => {
-    rl.close(); // Close the readline interface
-});
+// main().finally(() => {
+//     rl.close(); // Close the readline interface
+// });
 
 async function processGenderBiasCheckPrompt(prompt: hate_data) {
     let tempPromptMeta: PromptMetadata = {
@@ -123,35 +124,41 @@ async function processGenderBiasCheckPrompt(prompt: hate_data) {
 }
 
 async function main() {
-    let c = getClient();
-    setAPIKey(c?.apiKey!);
-    setEndpoint(c?.baseURL!);
+    // let c = getClient();
+    // setAPIKey(c?.apiKey!);
+    // setEndpoint(c?.baseURL!);
     let prompts: hate_data[] = await load_txt();
-
-    // if API key not defined in current LLMConfig, ask for API key in console
-    if (
-        getAPIKey() === undefined ||
-        getAPIKey() === '' ||
-        getAPIKey() === null
-    ) {
-        console.log('API key not found in LLMConfig. ');
-        const apiKey = await readFromConsole(
-            'Please enter your OpenAI API key: '
-        );
-        setAPIKey(apiKey);
+    // prompts = prompts.slice(0, 10);
+    let a = await LLMUtils.main();
+    if (a !== 'done') {
+        console.log('Error in LLMUtils');
+        exit();
     }
 
-    if (
-        getEndpoint() === undefined ||
-        getEndpoint() === '' ||
-        getEndpoint() === null
-    ) {
-        console.log('Endpoint not found in LLMConfig. ');
-        const endpoint = await readFromConsole(
-            'Please enter your OpenAI Endpoint: '
-        );
-        setEndpoint(endpoint);
-    }
+    // // if API key not defined in current LLMConfig, ask for API key in console
+    // if (
+    //     getAPIKey() === undefined ||
+    //     getAPIKey() === '' ||
+    //     getAPIKey() === null
+    // ) {
+    //     console.log('API key not found in LLMConfig. ');
+    //     const apiKey = await readFromConsole(
+    //         'Please enter your OpenAI API key: '
+    //     );
+    //     setAPIKey(apiKey);
+    // }
+
+    // if (
+    //     getEndpoint() === undefined ||
+    //     getEndpoint() === '' ||
+    //     getEndpoint() === null
+    // ) {
+    //     console.log('Endpoint not found in LLMConfig. ');
+    //     const endpoint = await readFromConsole(
+    //         'Please enter your OpenAI Endpoint: '
+    //     );
+    //     setEndpoint(endpoint);
+    // }
 
     // read existing results_banchmark.json file, and extract the ids that were already processed
     // let existingResults = JSON.parse(
@@ -206,8 +213,12 @@ async function main() {
     //     fs.unlinkSync('results_benchmark-3.json');
     // }
 
+    if (fs.existsSync('results/sexuality_bias_results_benchmark.json')) {
+        fs.unlinkSync('results/sexuality_bias_results_benchmark.json');
+    }
+
     fs.writeFileSync(
-        'sexuality_bias_results_benchmark.json',
+        'results/sexuality_bias_results_benchmark.json',
         JSON.stringify(results_benchmark)
     );
 

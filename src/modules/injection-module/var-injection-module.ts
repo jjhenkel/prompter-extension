@@ -1,4 +1,4 @@
-import { ChatCompletionMessageParam } from 'openai/resources';
+import { ChatCompletionMessageParam } from 'openai/resources/index';
 import * as LLMUtils from '../LLMUtils';
 // import { JSONSchemaObject } from 'openai/lib/jsonschema.mjs';
 import PromptJson from './var-injection-prompt-1.json';
@@ -61,7 +61,7 @@ async function checkVariableInjection(
     ];
     // console.log(messages);
     // convert messages list to chat request
-    let client = LLMUtils.getClient();
+    let client = await LLMUtils.getClient();
     // let client = LLMUtils.getClient();
     // console.log(client);
     if (client === undefined) {
@@ -331,7 +331,7 @@ async function processInjection(
                     { role: 'system', content: comparisonSystemPromptText },
                     { role: 'user', content: comparisonUserPromptText },
                 ];
-                let client = LLMUtils.getClient();
+                let client = await LLMUtils.getClient();
                 // console.log(client);
                 if (client === undefined) {
                     console.error(

@@ -6,26 +6,26 @@ import { exit } from 'process';
 import checkVariableInjection from '../modules/injection-module/var-injection-module';
 import { PromptMetadata, PromptTemplateHole } from '../modules/prompt-finder';
 import { canonizeStringWithLLM } from '../modules/prompt-finder/canonization';
-import { getClient } from '../modules/LLMUtils';
-import readline from 'readline';
-import { ChatCompletionMessageParam } from 'openai/resources';
+// import { getClient } from '../modules/LLMUtils';
+import * as LLMUtils from '../modules/LLMUtils';
+// import { ChatCompletionMessageParam } from 'openai/resources';
 // load the data from the json file
 
 const fs = require('fs');
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
+// const rl = readline.createInterface({
+//     input: process.stdin,
+//     output: process.stdout,
+// });
 
-function readFromConsole(prompt: string): Promise<string> {
-    return new Promise((resolve) => {
-        rl.question(prompt, (answer) => {
-            resolve(answer);
-            // rl.close();
-        });
-    });
-}
+// function readFromConsole(prompt: string): Promise<string> {
+//     return new Promise((resolve) => {
+//         rl.question(prompt, (answer) => {
+//             resolve(answer);
+//             // rl.close();
+//         });
+//     });
+// }
 
 // main().finally(() => {
 //     rl.close(); // Close the readline interface
@@ -112,24 +112,29 @@ async function processGenderBiasPromptSetCheck(
 }
 
 async function main() {
-    let c = getClient();
-    let messages: ChatCompletionMessageParam[] = [
-        {
-            role: 'system',
-            content: '',
-        },
-        {
-            role: 'user',
-            content: 'Say Hi',
-        },
-    ];
+    let a = await LLMUtils.main();
+    if (a !== 'done') {
+        console.log('Error in LLMUtils');
+        exit();
+    }
+    // let c = getClient();
+    // let messages: ChatCompletionMessageParam[] = [
+    //     {
+    //         role: 'system',
+    //         content: '',
+    //     },
+    //     {
+    //         role: 'user',
+    //         content: 'Say Hi',
+    //     },
+    // ];
 
-    let a = c?.chat.completions.create({
-        messages: messages,
-        model: 'gpt-4o',
-    });
-    console.log(a);
-    return 0;
+    // let a = c?.chat.completions.create({
+    //     messages: messages,
+    //     model: 'gpt-4o',
+    // });
+    // console.log(a);
+    // return 0;
     const ids_generated: string[] = [];
     // if API key not defined in current LLMConfig, ask for API key in console
     // if (
@@ -197,13 +202,13 @@ async function main() {
     );
     console.log('randomPromptsFivePlusVar:', randomPromptsFivePlusVar.length);
     // slice the randomPrompts to the desired length of 10
-    randomPromptsNoVar = randomPromptsNoVar.slice(0, 1);
-    randomPromptsOneVar = randomPromptsOneVar.slice(0, 1);
-    randomPromptsTwoVar = randomPromptsTwoVar.slice(0, 1);
-    randomPromptsThreeVar = randomPromptsThreeVar.slice(0, 1);
-    randomPromptsFourVar = randomPromptsFourVar.slice(0, 1);
-    randomPromptsFiveVar = randomPromptsFiveVar.slice(0, 1);
-    randomPromptsFivePlusVar = randomPromptsFivePlusVar.slice(0, 1);
+    // randomPromptsNoVar = randomPromptsNoVar.slice(0, 1);
+    // randomPromptsOneVar = randomPromptsOneVar.slice(0, 1);
+    // randomPromptsTwoVar = randomPromptsTwoVar.slice(0, 1);
+    // randomPromptsThreeVar = randomPromptsThreeVar.slice(0, 1);
+    // randomPromptsFourVar = randomPromptsFourVar.slice(0, 1);
+    // randomPromptsFiveVar = randomPromptsFiveVar.slice(0, 1);
+    // randomPromptsFivePlusVar = randomPromptsFivePlusVar.slice(0, 1);
 
     //     // run variable injection check on each prompt set
     let resultsNoVar = [];
@@ -233,22 +238,20 @@ async function main() {
     //         console.log(JSON.stringify(e));
     //     }
     // }
-    const genderCheckPromises_0 = randomPromptsNoVar.map(async (prompt) => {
-        return await processGenderBiasPromptSetCheck(prompt, ids_generated);
-    });
-    resultsNoVar = await Promise.all(genderCheckPromises_0);
-    if (
-        fs.existsSync('./results/gender-bias-check-patched/results_no_var.json')
-    ) {
-        fs.unlinkSync(
-            './results/gender-bias-check-patched/results_no_var.json'
-        );
-    }
-    fs.writeFileSync(
-        './results/gender-bias-check-patched/results_no_var.json',
-        JSON.stringify(resultsNoVar)
-    );
-    console.log('results for no var done');
+    // const genderCheckPromises_0 = randomPromptsNoVar.map(async (prompt) => {
+    //     return await processGenderBiasPromptSetCheck(prompt, ids_generated);
+    // });
+    // resultsNoVar = await Promise.all(genderCheckPromises_0);
+    // if (
+    //     fs.existsSync('./results/vuln-bias-check-patched/results_no_var.json')
+    // ) {
+    //     fs.unlinkSync('./results/vuln-bias-check-patched/results_no_var.json');
+    // }
+    // fs.writeFileSync(
+    //     './results/vuln-bias-check-patched/results_no_var.json',
+    //     JSON.stringify(resultsNoVar)
+    // );
+    // console.log('results for no var done');
     // for (let i = 0; i < randomPromptsOneVar.length; i++) {
     //     let tempPromptMeta: PromptMetadata = {
     //         id: '0',
@@ -268,24 +271,20 @@ async function main() {
     //         console.log(JSON.stringify(e));
     //     }
     // }
-    const genderCheckPromises_1 = randomPromptsOneVar.map(async (prompt) => {
-        return await processGenderBiasPromptSetCheck(prompt, ids_generated);
-    });
-    resultsOneVar = await Promise.all(genderCheckPromises_1);
-    if (
-        fs.existsSync(
-            './results/gender-bias-check-patched/results_one_var.json'
-        )
-    ) {
-        fs.unlinkSync(
-            './results/gender-bias-check-patched/results_one_var.json'
-        );
-    }
-    fs.writeFileSync(
-        './results/gender-bias-check-patched/results_one_var.json',
-        JSON.stringify(resultsOneVar)
-    );
-    console.log('results for one var done');
+    // const genderCheckPromises_1 = randomPromptsOneVar.map(async (prompt) => {
+    //     return await processGenderBiasPromptSetCheck(prompt, ids_generated);
+    // });
+    // resultsOneVar = await Promise.all(genderCheckPromises_1);
+    // if (
+    //     fs.existsSync('./results/vuln-bias-check-patched/results_one_var.json')
+    // ) {
+    //     fs.unlinkSync('./results/vuln-bias-check-patched/results_one_var.json');
+    // }
+    // fs.writeFileSync(
+    //     './results/vuln-bias-check-patched/results_one_var.json',
+    //     JSON.stringify(resultsOneVar)
+    // );
+    // console.log('results for one var done');
     // for (let i = 0; i < randomPromptsTwoVar.length; i++) {
     //     let tempPromptMeta: PromptMetadata = {
     //         id: '0',
@@ -310,16 +309,12 @@ async function main() {
     });
     resultsTwoVar = await Promise.all(genderCheckPromises_2);
     if (
-        fs.existsSync(
-            './results/gender-bias-check-patched/results_two_var.json'
-        )
+        fs.existsSync('./results/vuln-bias-check-patched/results_two_var.json')
     ) {
-        fs.unlinkSync(
-            './results/gender-bias-check-patched/results_two_var.json'
-        );
+        fs.unlinkSync('./results/vuln-bias-check-patched/results_two_var.json');
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_two_var.json',
+        './results/vuln-bias-check-patched/results_two_var.json',
         JSON.stringify(resultsTwoVar)
     );
     console.log('results for two var done');
@@ -348,15 +343,15 @@ async function main() {
     resultsThreeVar = await Promise.all(genderCheckPromises_3);
     if (
         fs.existsSync(
-            './results/gender-bias-check-patched/results_three_var.json'
+            './results/vuln-bias-check-patched/results_three_var.json'
         )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_three_var.json'
+            './results/vuln-bias-check-patched/results_three_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_three_var.json',
+        './results/vuln-bias-check-patched/results_three_var.json',
         JSON.stringify(resultsThreeVar)
     );
     console.log('results for three var done');
@@ -384,16 +379,14 @@ async function main() {
     });
     resultsFourVar = await Promise.all(genderCheckPromises_4);
     if (
-        fs.existsSync(
-            './results/gender-bias-check-patched/results_four_var.json'
-        )
+        fs.existsSync('./results/vuln-bias-check-patched/results_four_var.json')
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_four_var.json'
+            './results/vuln-bias-check-patched/results_four_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_four_var.json',
+        './results/vuln-bias-check-patched/results_four_var.json',
         JSON.stringify(resultsFourVar)
     );
     console.log('results for four var done');
@@ -421,16 +414,14 @@ async function main() {
     });
     resultsFiveVar = await Promise.all(genderCheckPromises_5);
     if (
-        fs.existsSync(
-            './results/gender-bias-check-patched/results_five_var.json'
-        )
+        fs.existsSync('./results/vuln-bias-check-patched/results_five_var.json')
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_five_var.json'
+            './results/vuln-bias-check-patched/results_five_var.json'
         );
     }
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_five_var.json',
+        './results/vuln-bias-check-patched/results_five_var.json',
         JSON.stringify(resultsFiveVar)
     );
     console.log('results for five var done');
@@ -455,11 +446,11 @@ async function main() {
     // }
     if (
         fs.existsSync(
-            './results/gender-bias-check-patched/results_five_plus_var.json'
+            './results/vuln-bias-check-patched/results_five_plus_var.json'
         )
     ) {
         fs.unlinkSync(
-            './results/gender-bias-check-patched/results_five_plus_var.json'
+            './results/vuln-bias-check-patched/results_five_plus_var.json'
         );
     }
     const genderCheckPromises_6 = randomPromptsFivePlusVar.map(
@@ -469,7 +460,7 @@ async function main() {
     );
     resultsFivePlusVar = await Promise.all(genderCheckPromises_6);
     fs.writeFileSync(
-        './results/gender-bias-check-patched/results_five_plus_var.json',
+        './results/vuln-bias-check-patched/results_five_plus_var.json',
         JSON.stringify(resultsFivePlusVar)
     );
     console.log('results for five plus var done');
