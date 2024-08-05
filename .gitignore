@@ -132,3 +132,7 @@ dist
 
 # results 
 results*.json
+
+# ds_store
+.DS_Store
+**/.DS_Store
