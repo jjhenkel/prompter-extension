@@ -3,7 +3,6 @@ import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import path from 'path';
 import { PromptMetadata } from '../prompt-finder';
-import { patchHoles, unpatchHoles } from '../prompt-finder/hole-patching';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as LLMUtils from '../LLMUtils';
 import { Position } from 'vscode';
@@ -21,7 +20,7 @@ export type serializedPrompt = {
 export type fixInjectionResult = {
     error?: string;
     prompts?: Array<string>;
-    unresolvedKeys?: Array<string[]>;
+    // unresolvedKeys?: Array<string[]>;
 };
 
 export async function fixVulnerabilityInjection(
@@ -66,36 +65,24 @@ export async function fixVulnerabilityInjection(
             error: 'Prompt is not vulnerable to variable injections. No need to fix.',
         };
     }
-    // extract the system prompt from the yaml file
-    // extract the injected variables from the yaml file
-    // inject text variables into prompt
-    // path prompt holes
-    await patchHoles(inputPrompt);
+
     let InjectionVulnerabilityFixPromises = [];
     let fix_attempt_count = 0;
 
-    // generate patched prompt that only leaves current variable as unpatched
-    for (const attack_point in inputPrompt.templateValues) {
-        let patchedPrompt = inputPrompt.normalizedText;
-        for (const key in inputPrompt.templateValues) {
-            if (key === attack_point) {
-                continue;
-            }
-            let value = inputPrompt.templateValues[key].defaultValue;
-            patchedPrompt = patchedPrompt.replaceAll('{{' + key + '}}', value);
-        }
-        // inject the prompt and the reasoning into the bias fix prompt
-        let tempBiasFixUserPrompt = prepareFixPrompt(
-            injectionFixUserPrompt,
-            patchedPrompt
-        );
-        InjectionVulnerabilityFixPromises.push(
-            processPromptFix(
-                injectionFixSystemPrompt.content,
-                tempBiasFixUserPrompt
-            )
-        );
-    }
+    // inject the prompt and the reasoning into the bias fix prompt
+    let tempVulnFixUserPrompt = prepareFixPrompt(
+        injectionFixUserPrompt,
+        inputPrompt.normalizedText,
+        initialInjectionCheck
+    );
+
+    InjectionVulnerabilityFixPromises.push(
+        processPromptFix(
+            injectionFixSystemPrompt.content,
+            tempVulnFixUserPrompt
+        )
+    );
+    // }
 
     let fixedPrompts: Array<string> = [];
     const numberOfSuggestions = 5;
@@ -118,9 +105,9 @@ export async function fixVulnerabilityInjection(
             }
         }
         InjectionVulnerabilityFixPromises = [];
-        let genderBiasCheckPromises = [];
+        let VulnCheckPromises = [];
         for (let i = 0; i < allPrompts.length; i++) {
-            genderBiasCheckPromises.push(
+            VulnCheckPromises.push(
                 checkVariableInjection({
                     normalizedText: allPrompts[i],
                     // dummy parameters
@@ -138,9 +125,8 @@ export async function fixVulnerabilityInjection(
             );
         }
 
-        const VulnerabilityInjectionCheckResults = await Promise.all(
-            genderBiasCheckPromises
-        );
+        const VulnerabilityInjectionCheckResults =
+            await Promise.all(VulnCheckPromises);
 
         for (let i = 0; i < VulnerabilityInjectionCheckResults.length; i++) {
             if (!VulnerabilityInjectionCheckResults[i].error) {
@@ -156,8 +142,17 @@ export async function fixVulnerabilityInjection(
                 ) {
                     fixedPrompts.push(prompt);
                 } else {
+                    let tempVulnFixUserPrompt = prepareFixPrompt(
+                        injectionFixUserPrompt,
+                        prompt,
+                        injectionVulnerabilityCheckResult
+                    );
+
                     InjectionVulnerabilityFixPromises.push(
-                        processPromptFix(injectionFixUserPrompt.content, prompt)
+                        processPromptFix(
+                            injectionFixUserPrompt.content,
+                            tempVulnFixUserPrompt
+                        )
                     );
                 }
             }
@@ -167,40 +162,43 @@ export async function fixVulnerabilityInjection(
             break;
         }
     }
-    // unpatch the results before returning
-    let unresolvedKeys: string[][] = [];
-    for (let i = 0; i < fixedPrompts.length; i++) {
-        let tuple = unpatchHoles(fixedPrompts[i], inputPrompt);
-        fixedPrompts[i] = tuple[0];
-        unresolvedKeys = unresolvedKeys.concat(tuple[1]);
-    }
+
     return {
         prompts: fixedPrompts,
-        unresolvedKeys: unresolvedKeys,
     } as fixInjectionResult;
 }
 
 function prepareFixPrompt(
     injectionFixUserPrompt: serializedPrompt,
-    patchedPrompt: string
-    // initialGenderBiasCheck: JSONSchemaObject
+    inputPrompt: string,
+    initialVulnerabilityCheck: VariableInjectionResult
 ) {
+    //  specify the vulnerabile variables
+
+    for (const response_tuple in initialVulnerabilityCheck.poisoned_responses) {
+        const vulnerable_variable = response_tuple[0];
+        inputPrompt = inputPrompt.replaceAll(
+            '{{' + vulnerable_variable + '}}',
+            '_' + vulnerable_variable + '_'
+        );
+    }
+
     if (!injectionFixUserPrompt.injectedVariables) {
         console.log('Injected variables in Biased Fix User Prompt not found');
         return '';
     }
-    let tempBiasFixUserPrompt = injectionFixUserPrompt.content;
+    let tempVulnFixUserPrompt = injectionFixUserPrompt.content;
     let toInject: string[] = [
-        patchedPrompt,
+        inputPrompt,
         // JSON.stringify(initialGenderBiasCheck.reasoning),
     ];
     for (let i = 0; i < toInject.length; i++) {
-        tempBiasFixUserPrompt = tempBiasFixUserPrompt.replaceAll(
+        tempVulnFixUserPrompt = tempVulnFixUserPrompt.replaceAll(
             '{{' + injectionFixUserPrompt.injectedVariables[i] + '}}',
             toInject[i]
         );
     }
-    return tempBiasFixUserPrompt;
+    return tempVulnFixUserPrompt;
 }
 
 async function processPromptFix(

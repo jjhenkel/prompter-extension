@@ -13,6 +13,10 @@ import {
     fixGenderBias,
     fixGenderBiasResult,
 } from '../modules/bias-fix-modules/gender-bias-fix-module';
+import {
+    fixInjectionResult,
+    fixVulnerabilityInjection,
+} from 'src/modules/injection-fix-module/injection-fix-module';
 
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
@@ -74,6 +78,11 @@ export class PrompterParticipant {
                         prompt: 'fix-gender-bias',
                         command: 'fix-gender-bias',
                         label: 'Attempt to fix gender bias and bias potential in a prompt',
+                    },
+                    {
+                        prompt: 'fix-injection-vulnerability',
+                        command: 'fix-injection-vulnerability',
+                        label: 'Attempt to fix injection vulnerability in a prompt',
                     },
                     {
                         prompt: 'analyze-injection-vulnerability',
@@ -156,6 +165,16 @@ export class PrompterParticipant {
                 );
                 return { metadata: { command: 'fix-gender-bias' } };
             }
+            case 'fix-injection-vulnerability': {
+                await this._handleFixInjectionVulnerability(
+                    request,
+                    context,
+                    stream,
+                    token
+                );
+                return { metadata: { command: 'fix-injection-vulnerability' } };
+            }
+
             case 'parse-prompt': {
                 await this._handleParsePrompt(request, context, stream, token);
                 return { metadata: { command: 'parse-prompt' } };
@@ -204,6 +223,124 @@ export class PrompterParticipant {
             }
         }
     }
+    async _handleFixInjectionVulnerability(
+        request: vscode.ChatRequest,
+        context: vscode.ChatContext,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken
+    ) {
+        stream.markdown(
+            'This module will attempt to fix Injection Vulnerability in the selected prompt.'
+        );
+        stream.markdown('\n\n');
+        stream.markdown(
+            'It will default to using the text selected in the editor as a prompt.'
+        );
+        stream.markdown('\n\n');
+        stream.markdown(
+            'If no text is selected, it will default to using the prompt saved internally via the find prompts command.'
+        );
+        stream.markdown('\n\n');
+        // check if text is selected
+        const editor = vscode.window.activeTextEditor;
+        let tempPrompt: PromptMetadata | undefined;
+        if (editor) {
+            const selectedText = editor.document.getText(editor.selection);
+            if (selectedText) {
+                // if selected text is found, analyze it
+                stream.markdown(
+                    'Analyzing selected text... [This may take a while]'
+                );
+                stream.markdown('\n\n');
+                const startLocation =
+                    vscode.window.activeTextEditor?.selection.start;
+                const endLocation =
+                    vscode.window.activeTextEditor?.selection.end;
+                tempPrompt = await this._findCorrespondingPromptObject(
+                    selectedText,
+                    startLocation,
+                    endLocation
+                );
+                if (!tempPrompt) {
+                    stream.markdown(
+                        'No corresponding prompt found in the current file, make sure you select the complete prompt, and that the prompt is saved in the current file, and the file is correctly written.'
+                    );
+                    return {
+                        metadata: {
+                            command: 'fix-injection-vulnerability',
+                        },
+                    };
+                }
+                const VulnFixResults =
+                    await fixVulnerabilityInjection(tempPrompt);
+                // Render the results
+                stream.markdown('**🎯 Injection Vulnerability Fix Results**:');
+                stream.markdown('\n\n');
+                this._processInjectionVulnerabilityFixJSON(
+                    VulnFixResults,
+                    stream
+                );
+                return {
+                    metadata: { command: 'fix-injection-vulnerability' },
+                };
+            }
+        }
+
+        if (this.savedPrompt) {
+            stream.markdown('Analyzing prompt saved for analysis...');
+
+            const VulnFixResults = await fixVulnerabilityInjection(
+                this.savedPrompt!
+            );
+            // Render the results
+            stream.markdown('**🎯 Injection Vulnerability Fix Results**:');
+            stream.markdown('\n\n');
+            this._processInjectionVulnerabilityFixJSON(VulnFixResults, stream);
+            return { metadata: { command: 'fix-injection-vulnerability' } };
+        } else {
+            if (editor) {
+                stream.markdown(
+                    'No prompt found saved and no text selected in active editor'
+                );
+                return {
+                    metadata: { command: 'fix-injection-vulnerability' },
+                };
+            }
+            stream.markdown('No prompt found saved and no active editor');
+            return { metadata: { command: 'fix-injection-vulnerability' } };
+        }
+    }
+    _processInjectionVulnerabilityFixJSON(
+        VulnFixResults: JSONSchemaObject | fixInjectionResult,
+        stream: vscode.ChatResponseStream
+    ) {
+        if ((VulnFixResults as JSONSchemaObject).error) {
+            stream.markdown('Error: ');
+            stream.markdown(
+                (VulnFixResults as JSONSchemaObject).error as string
+            );
+            stream.markdown('\n\n');
+            return;
+        } else {
+            const vulnFixRes = VulnFixResults as fixGenderBiasResult;
+            // if more than 5 prompts are returned, show only the first 5
+            if (vulnFixRes.prompts.length > 5) {
+                stream.markdown(
+                    'More than 5 prompts were generated, showing only the first 5'
+                );
+                stream.markdown('\n\n');
+            }
+            stream.markdown('**📝 Fixed Prompts:**');
+            stream.markdown('\n\n');
+            for (let i = 0; i < 5; i++) {
+                stream.markdown(`**Prompt ${i + 1}**:`);
+                stream.markdown('\n\n');
+                stream.markdown(`${vulnFixRes.prompts[i]}`);
+                stream.markdown('\n\n');
+            }
+        }
+    }
+
     async _handleFixGenderBiasPrompt(
         request: vscode.ChatRequest,
         context: vscode.ChatContext,
@@ -237,7 +374,7 @@ export class PrompterParticipant {
                     vscode.window.activeTextEditor?.selection.start;
                 const endLocation =
                     vscode.window.activeTextEditor?.selection.end;
-                let tempPrompt = await this._findCorrespondingPromptObject(
+                tempPrompt = await this._findCorrespondingPromptObject(
                     selectedText,
                     startLocation,
                     endLocation

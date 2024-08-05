@@ -37,6 +37,10 @@
                         "description": "Attempt to fix gender bias and bias potential in a prompt"
                     },
                     {
+                        "name": "fix-injection-vulnerability",
+                        "description": "Attempt to fix injection vulnerability in a prompt"
+                    },
+                    {
                         "name": "analyze-bias",
                         "description": "Analyze bias for a selected prompt"
                     },
