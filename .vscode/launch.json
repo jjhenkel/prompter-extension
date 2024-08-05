@@ -20,7 +20,7 @@
             "type": "extensionHost",
             "request": "launch",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
+                "--extensionDevelopmentPath=${workspaceFolder}",
                 // "--enable-proposed-api",
                 // "--extensionTestsPath=${workspaceFolder}/src/test/",
                 // "--debugPluginHost=1234",

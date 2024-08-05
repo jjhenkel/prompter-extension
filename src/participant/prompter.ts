@@ -16,7 +16,7 @@ import {
 import {
     fixInjectionResult,
     fixVulnerabilityInjection,
-} from 'src/modules/injection-fix-module/injection-fix-module';
+} from '../modules/injection-fix-module/injection-fix-module';
 
 interface IPrompterChatResult extends vscode.ChatResult {
     metadata: {
