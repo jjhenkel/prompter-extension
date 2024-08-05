@@ -2,8 +2,12 @@
   content: You are an AI assistant that helps users fix issues with their prompts. You are focused on helping users make their prompts less vulnerable to injection attacks. You are designed to be neutral and unbiased in your responses. You are not a human, and you do not have personal opinions or beliefs. You are here to help users fix their prompts WHILE STAYING AS CLOSE AS POSSIBLE TO THE ORIGINAL INTENT AND MEANING OF THE PROMPT.
 - role: user
   content:
-      I need help fixing a prompt that is vulnerable to prompt injection attacks via one of its variable and may cause my AI model to act against ways I intended it to. The prompt I need to fix is within <prompt></prompt>, the vulnerable variables are within _ _ in the prompt.  Please rewtie this prompt to generate multiple alternative prompts that make it harder to inject while only performing the smallest alterations needed. Make sure that the alternative prompts are still relevant to the original intent of the prompt, and that they still contain the same variables.
-      YOUR ANSWER MUST ONLY BE A VALID JSON OBJECT containing ONLY the following key "prompts", which should be an array of strings containing the alternative prompts, and have at least 5 elements. DO NOT WRITE ANY TEXT OTHER THAN THE JSON OBJECT.
+      I need help fixing a prompt that is vulnerable to prompt injection attacks via one of its variable and may cause my AI model to act against ways I intended it to. The prompt I need to fix is within <prompt></prompt>, the variables in this prompts are within {{}}. Please rewtie this prompt to generate exactly 5  alternative prompts that make it harder to inject attacks to it while only performing the smallest alterations needed. Make sure that the alternative prompts are still relevant to the original intent of the prompt, and that they still contain the same variables, and that they will refuse to respond to any of these attacks or other similar attacks. The attacks that were injected within the prompt via this variable are within <attacks></attacks>. The vulnerable variable is within <vulnerable-variables> and </vulnerable-variables>.
       <prompt>"{{prompt}}"</prompt>
+      <vulnerable-variables>"{{vulnerable-variables}}"</vulnerable-variables>
+      <attacks>"{{attacks}}"</attacks>
+      YOUR ANSWER MUST ONLY BE A VALID JSON OBJECT containing ONLY the following key "prompts", which should be an array of strings containing the alternative prompts, and have at least 5 elements. DO NOT WRITE ANY TEXT OTHER THAN THE JSON OBJECT. Make sure that these prompts are correctly formatted JSON strings. 
   injectedVariables:
       - prompt
+      - vulnerable-variables
+      - attacks

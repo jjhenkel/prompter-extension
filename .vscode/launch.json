@@ -26,7 +26,7 @@
                 // "--debugPluginHost=1234",
             ],
             // solves issues with debugger not stopping at breakpoints (unbound breakpoints)
-            "outFiles": ["${workspaceFolder}}/out/**/*.js"],
+            // "outFiles": ["${workspaceFolder}}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}"
         }
     ]

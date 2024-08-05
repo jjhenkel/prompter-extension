@@ -58,7 +58,7 @@ export async function fixVulnerabilityInjection(
         return { error: initialInjectionCheck.error };
     }
     if (
-        initialInjectionCheck.vulnerable === undefined ||
+        initialInjectionCheck.vulnerable &&
         initialInjectionCheck.vulnerable === 'No'
     ) {
         return {
@@ -107,6 +107,19 @@ export async function fixVulnerabilityInjection(
         InjectionVulnerabilityFixPromises = [];
         let VulnCheckPromises = [];
         for (let i = 0; i < allPrompts.length; i++) {
+            // extract variables between {{ }} from allPrompts[i] and create dictionary with key as variable name and value as empty string
+            const regex = /{{(.*?)}}/g;
+            let match;
+            let templateHoles: { [key: string]: any } = {};
+            while ((match = regex.exec(allPrompts[i])) !== null) {
+                const holeName: string = match[1];
+                templateHoles[holeName] = {
+                    name: holeName,
+                    inferredType: 'string',
+                    rawText: match[0],
+                    // get the start and end location of the hole in the normalized response in the parsed node
+                };
+            }
             VulnCheckPromises.push(
                 checkVariableInjection({
                     normalizedText: allPrompts[i],
@@ -118,9 +131,9 @@ export async function fixVulnerabilityInjection(
                     endLocation: new Position(0, 0),
                     parentCallStartLocation: new Position(0, 0),
                     parentCallEndLocation: new Position(0, 0),
-                    templateValues: {},
+                    templateValues: templateHoles,
                     associatedParameters: {},
-                    sourceFilePath: '',
+                    sourceFilePath: inputPrompt.sourceFilePath,
                 })
             );
         }
@@ -136,8 +149,7 @@ export async function fixVulnerabilityInjection(
                         i
                     ] as VariableInjectionResult;
                 if (
-                    !injectionVulnerabilityCheckResult.vulnerable ===
-                        undefined &&
+                    injectionVulnerabilityCheckResult.vulnerable &&
                     injectionVulnerabilityCheckResult.vulnerable === 'No'
                 ) {
                     fixedPrompts.push(prompt);
@@ -171,17 +183,23 @@ export async function fixVulnerabilityInjection(
 function prepareFixPrompt(
     injectionFixUserPrompt: serializedPrompt,
     inputPrompt: string,
-    initialVulnerabilityCheck: VariableInjectionResult
+    vulnerabilityCheck: VariableInjectionResult
 ) {
     //  specify the vulnerabile variables
-
-    for (const response_tuple in initialVulnerabilityCheck.poisoned_responses) {
+    let attacks: string[] = [];
+    let vulnerableVariables: string[] = [];
+    vulnerabilityCheck.poisoned_responses?.forEach((response_tuple) => {
         const vulnerable_variable = response_tuple[0];
-        inputPrompt = inputPrompt.replaceAll(
-            '{{' + vulnerable_variable + '}}',
-            '_' + vulnerable_variable + '_'
-        );
-    }
+        // if vulnerable variable not in the list of vulnerable variables, add it
+        if (!vulnerableVariables.includes(vulnerable_variable)) {
+            vulnerableVariables.push(vulnerable_variable);
+        }
+        // if attack not in the list of attacks, add it
+        const attack = response_tuple[2];
+        if (!attacks.includes(attack)) {
+            attacks.push(attack);
+        }
+    });
 
     if (!injectionFixUserPrompt.injectedVariables) {
         console.log('Injected variables in Biased Fix User Prompt not found');
@@ -190,6 +208,8 @@ function prepareFixPrompt(
     let tempVulnFixUserPrompt = injectionFixUserPrompt.content;
     let toInject: string[] = [
         inputPrompt,
+        JSON.stringify(vulnerableVariables),
+        JSON.stringify(attacks),
         // JSON.stringify(initialGenderBiasCheck.reasoning),
     ];
     for (let i = 0; i < toInject.length; i++) {
@@ -213,7 +233,7 @@ async function processPromptFix(
         messages,
         {
             model: LLMUtils.GPTModel.GPT3_5Turbo,
-            temperature: 0.3,
+            temperature: 0.0,
             seed: 42,
         },
         undefined,
