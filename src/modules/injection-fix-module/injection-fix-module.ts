@@ -76,6 +76,16 @@ export async function fixVulnerabilityInjection(
         initialInjectionCheck
     );
 
+    //collect vulnerable variables from initial check
+    let vulnerableVariables: string[] = [];
+    initialInjectionCheck.poisoned_responses?.forEach((response_tuple) => {
+        const vulnerable_variable = response_tuple[0];
+        // if vulnerable variable not in the list of vulnerable variables, add it
+        if (!vulnerableVariables.includes(vulnerable_variable)) {
+            vulnerableVariables.push(vulnerable_variable);
+        }
+    });
+
     InjectionVulnerabilityFixPromises.push(
         processPromptFix(
             injectionFixSystemPrompt.content,
@@ -89,89 +99,130 @@ export async function fixVulnerabilityInjection(
     const maxNumberOfGenerationAttempts = 10;
     while (
         InjectionVulnerabilityFixPromises.length !== 0 &&
-        (fixedPrompts.length < numberOfSuggestions ||
-            fix_attempt_count < maxNumberOfGenerationAttempts)
+        fixedPrompts.length < numberOfSuggestions &&
+        fix_attempt_count < maxNumberOfGenerationAttempts
     ) {
-        fix_attempt_count += 1;
-        let fixResultsJSONs = await Promise.all(
-            InjectionVulnerabilityFixPromises
-        );
-        // flatten the array of prompts
-        let allPrompts: Array<string> = [];
-        for (let i = 0; i < fixResultsJSONs.length; i++) {
-            if (!fixResultsJSONs[i].error) {
-                let fixResult = fixResultsJSONs[i] as fixInjectionResult;
-                allPrompts = allPrompts.concat(fixResult.prompts!);
-            }
-        }
-        InjectionVulnerabilityFixPromises = [];
-        let VulnCheckPromises = [];
-        for (let i = 0; i < allPrompts.length; i++) {
-            // extract variables between {{ }} from allPrompts[i] and create dictionary with key as variable name and value as empty string
-            const regex = /{{(.*?)}}/g;
-            let match;
-            let templateHoles: { [key: string]: any } = {};
-            while ((match = regex.exec(allPrompts[i])) !== null) {
-                const holeName: string = match[1];
-                templateHoles[holeName] = {
-                    name: holeName,
-                    inferredType: 'string',
-                    rawText: match[0],
-                    // get the start and end location of the hole in the normalized response in the parsed node
-                };
-            }
-            VulnCheckPromises.push(
-                checkVariableInjection({
-                    normalizedText: allPrompts[i],
-                    // dummy parameters
-                    id: '',
-                    rawText: '',
-                    rawTextOfParentCall: '',
-                    startLocation: new Position(0, 0),
-                    endLocation: new Position(0, 0),
-                    parentCallStartLocation: new Position(0, 0),
-                    parentCallEndLocation: new Position(0, 0),
-                    templateValues: templateHoles,
-                    associatedParameters: {},
-                    sourceFilePath: inputPrompt.sourceFilePath,
-                })
+        try {
+            fix_attempt_count += 1;
+            let fixResultsJSONs = await Promise.all(
+                InjectionVulnerabilityFixPromises
             );
-        }
-
-        const VulnerabilityInjectionCheckResults =
-            await Promise.all(VulnCheckPromises);
-
-        for (let i = 0; i < VulnerabilityInjectionCheckResults.length; i++) {
-            if (!VulnerabilityInjectionCheckResults[i].error) {
-                let prompt = allPrompts[i];
-                let injectionVulnerabilityCheckResult =
-                    VulnerabilityInjectionCheckResults[
-                        i
-                    ] as VariableInjectionResult;
-                if (
-                    injectionVulnerabilityCheckResult.vulnerable &&
-                    injectionVulnerabilityCheckResult.vulnerable === 'No'
-                ) {
-                    fixedPrompts.push(prompt);
-                } else {
-                    let tempVulnFixUserPrompt = prepareFixPrompt(
-                        injectionFixUserPrompt,
-                        prompt,
-                        injectionVulnerabilityCheckResult
-                    );
-
-                    InjectionVulnerabilityFixPromises.push(
-                        processPromptFix(
-                            injectionFixUserPrompt.content,
-                            tempVulnFixUserPrompt
-                        )
-                    );
+            // flatten the array of prompts
+            let allPrompts: Array<string> = [];
+            for (let i = 0; i < fixResultsJSONs.length; i++) {
+                if (!fixResultsJSONs[i].error) {
+                    let fixResult = fixResultsJSONs[i] as fixInjectionResult;
+                    allPrompts = allPrompts.concat(fixResult.prompts!);
                 }
             }
-        }
-        //  return when enough prompts generated
-        if (fixedPrompts.length >= numberOfSuggestions) {
-            break;
+            InjectionVulnerabilityFixPromises = [];
+            let VulnCheckPromises = [];
+            for (let i = 0; i < allPrompts.length; i++) {
+                // extract variables between {{ }} from allPrompts[i] and create dictionary with key as variable name and value as empty string
+                const regex = /{{(.*?)}}/g;
+                let match;
+                let templateHoles: { [key: string]: any } = {};
+                while ((match = regex.exec(allPrompts[i])) !== null) {
+                    const holeName: string = match[1];
+                    templateHoles[holeName] = {
+                        name: holeName,
+                        inferredType: 'string',
+                        rawText: match[0],
+                        // get the start and end location of the hole in the normalized response in the parsed node
+                    };
+                }
+                VulnCheckPromises.push(
+                    checkVariableInjection({
+                        normalizedText: allPrompts[i],
+                        // dummy parameters
+                        id: '',
+                        rawText: '',
+                        rawTextOfParentCall: '',
+                        startLocation: new Position(0, 0),
+                        endLocation: new Position(0, 0),
+                        parentCallStartLocation: new Position(0, 0),
+                        parentCallEndLocation: new Position(0, 0),
+                        templateValues: templateHoles,
+                        associatedParameters: {},
+                        sourceFilePath: inputPrompt.sourceFilePath,
+                    })
+                );
+            }
+
+            const VulnerabilityInjectionCheckResults =
+                await Promise.all(VulnCheckPromises);
+
+            // sort the VulnerabilityInjectionCheckResults by poisoned_responses length in ascending order
+            VulnerabilityInjectionCheckResults.sort((a, b) => {
+                if (!a.error && !b.error) {
+                    let aVuln = a as VariableInjectionResult;
+                    let bVuln = b as VariableInjectionResult;
+                    return (
+                        (aVuln.poisoned_responses?.length ?? 0) -
+                        (bVuln.poisoned_responses?.length ?? 0)
+                    );
+                } else {
+                    return 0;
+                }
+            });
+
+            // we'll attempt to fix the top 5 least vulnerable prompts
+            for (
+                let i = 0;
+                i < VulnerabilityInjectionCheckResults.length;
+                i++
+            ) {
+                if (!VulnerabilityInjectionCheckResults[i].error) {
+                    let prompt = allPrompts[i];
+                    let injectionVulnerabilityCheckResult =
+                        VulnerabilityInjectionCheckResults[
+                            i
+                        ] as VariableInjectionResult;
+                    if (
+                        injectionVulnerabilityCheckResult.vulnerable! ===
+                            'No' ||
+                        injectionVulnerabilityCheckResult.vulnerable! ===
+                            'Maybe'
+                    ) {
+                        // if prompt does not contain vulnerable varibles, ignore it
+                        for (let j = 0; j < vulnerableVariables.length; j++) {
+                            if (
+                                !prompt.includes(
+                                    '{{' + vulnerableVariables[j] + '}}'
+                                )
+                            ) {
+                                continue;
+                            }
+                        }
+                        fixedPrompts.push(prompt);
+                    } else {
+                        if (
+                            InjectionVulnerabilityFixPromises.length <
+                            numberOfSuggestions
+                        ) {
+                            let tempVulnFixUserPrompt = prepareFixPrompt(
+                                injectionFixUserPrompt,
+                                prompt,
+                                injectionVulnerabilityCheckResult
+                            );
+                            InjectionVulnerabilityFixPromises.push(
+                                processPromptFix(
+                                    injectionFixSystemPrompt.content,
+                                    tempVulnFixUserPrompt
+                                )
+                            );
+                        }
+                    }
+                }
+            }
+            //  return when enough prompts generated
+            if (fixedPrompts.length >= 1) {
+                break;
+            }
+        } catch (e) {
+            console.log(JSON.stringify(e));
+            console.log('Error in processing prompt fix');
+            return { error: 'Error in processing prompt' };
         }
     }
 
@@ -234,11 +285,12 @@ async function processPromptFix(
         {
             model: LLMUtils.GPTModel.GPT3_5Turbo,
             temperature: 0.0,
-            seed: 42,
+            // seed: 42,
+            // response_format: {"type": "json_object"}
         },
         undefined,
         true,
-        true
+        false
     );
     try {
         const JSONResult = JSON.parse(result);

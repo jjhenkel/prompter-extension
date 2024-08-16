@@ -314,6 +314,18 @@ async function processInjection(
             // ]);
             else {
                 // ask chatgpt to compare the attack response with the default response and check if the attack response is similar in tone , goal, sentiment to the default response
+
+                // if injected results is a json that contains error, and error_messge starts with "I am sorry", change  injectedResult to error_message contents
+
+                // parse injected result to json
+                try {
+                    const json = JSON.parse(injectedResult);
+                    if (json.error && json.error.includes('I am sorry')) {
+                        injectedResult = json.error;
+                    }
+                } catch (e) {
+                    // not a JSON
+                }
                 const prompt_list = [defaultResponse, injectedResult];
                 for (let i = 0; i < prompt_list.length; i++) {
                     let value = '{{' + comparisonVariablesToInject[i] + '}}';

@@ -332,7 +332,7 @@ export class PrompterParticipant {
             }
             stream.markdown('**📝 Fixed Prompts:**');
             stream.markdown('\n\n');
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < Math.min(5, vulnFixRes.prompts.length); i++) {
                 stream.markdown(`**Prompt ${i + 1}**:`);
                 stream.markdown('\n\n');
                 stream.markdown(`${vulnFixRes.prompts[i]}`);

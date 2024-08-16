@@ -161,7 +161,7 @@ function getAzureClient(): OpenAI | undefined {
     let client = new OpenAI({
         apiKey: credential,
         baseURL: endpoint + 'openai/deployments/gpt-35-turbo',
-        defaultQuery: { 'api-version': '2023-05-15' },
+        defaultQuery: { 'api-version': '2024-06-01' },
         defaultHeaders: { 'api-key': credential },
     });
     return client;
@@ -199,7 +199,7 @@ export async function sendChatRequestAndGetDirectResponse(
                     return await client.chat.completions.create({
                         messages: organizedMessages,
                         model: LLMOptions?.model[config.LLM_Backend].ID,
-                        temperature: (LLMOptions?.temperature as number) ?? 0.3,
+                        temperature: (LLMOptions?.temperature as number) ?? 0.0,
                         seed: (LLMOptions?.seed as number) ?? 42,
                         // transform remaining LLMOptions into parameter value pairs
                         ...otherOptions,
