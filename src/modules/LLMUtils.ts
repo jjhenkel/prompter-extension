@@ -220,7 +220,7 @@ function getAzureClient(): OpenAI | undefined {
     let client = new OpenAI({
         apiKey: credential,
         baseURL: endpoint + 'openai/deployments/gpt-35-turbo',
-        defaultQuery: { 'api-version': '2023-05-15' },
+        defaultQuery: { 'api-version': '2024-06-01' },
         defaultHeaders: { 'api-key': credential },
     });
     return client;
@@ -258,7 +258,7 @@ export async function sendChatRequestAndGetDirectResponse(
                     return await client.chat.completions.create({
                         messages: organizedMessages,
                         model: LLMOptions?.model[config.LLM_Backend].ID,
-                        temperature: (LLMOptions?.temperature as number) ?? 0.3,
+                        temperature: (LLMOptions?.temperature as number) ?? 0.0,
                         seed: (LLMOptions?.seed as number) ?? 42,
                         // transform remaining LLMOptions into parameter value pairs
                         ...otherOptions,
@@ -276,72 +276,74 @@ export async function sendChatRequestAndGetDirectResponse(
             );
         }
     } else {
-        // let convertedMessages: vscode.LanguageModelChatMessage[] = [];
-        // organizedMessages.forEach((message) => {
-        //     if (message.role === 'system') {
-        //         convertedMessages.push(
-        //             new vscode.LanguageModelChatSystemMessage(message.content)
-        //         );
-        //     } else if (message.role === 'user') {
-        //         convertedMessages.push(
-        //             new vscode.LanguageModelChatUserMessage(
-        //                 message.content as string
-        //             )
-        //         );
-        //     } else if (message.role === 'assistant') {
-        //         convertedMessages.push(
-        //             new vscode.LanguageModelChatAssistantMessage(
-        //                 message.content as string
-        //             )
-        //         );
-        //     } else {
-        //         console.error('Invalid message role - skipping message');
-        //     }
-        // });
-        // if (LLMOptions?.model === GPTModel.GPT4_Turbo) {
-        //     // TODO: Does this not exist?
-        //     // model = 'copilot-gpt-4-turbo';
-        //     console.warn(
-        //         'Copilot GPT4Turbo does not exist. Using GPT3.5 turbo instead.'
-        //     );
-        // }
-        // const copyOfLLMOptions = { ...LLMOptions };
-        // delete copyOfLLMOptions.model;
-        // const result = await retryExponential(async () => {
-        //     if (client && 'sendChatRequest' in client) {
-        //         return await client.sendChatRequest(
-        //             LLMOptions?.model.Copilot.ID ?? 'copilot-gpt-3.5-turbo',
-        //             convertedMessages,
-        //             {
-        //                 modelOptions: copyOfLLMOptions,
-        //             },
-        //             cancellationToken ||
-        //                 new vscode.CancellationTokenSource().token
-        //         );
-        //     }
-        // });
-        // let completeResult = '';
-        // if (result !== null && result !== undefined) {
-        //     for await (const fragment of result.stream) {
-        //         completeResult += fragment;
-        //     }
-        // }
-        // if (completeResult !== '' && completeResult !== undefined) {
-        //     if (completeResult.startsWith('I am sorry')) {
-        //         console.error(
-        //             'LLM failed to generate an appropriate response, and I am sorry was returned'
-        //         );
-        //         return (
-        //             '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message":' +
-        //             JSON.stringify(completeResult) +
-        //             '}'
-        //         );
-        //     }
-        //     return completeResult;
-        // } else {
-        //     console.error('No response from LLM');
-        //     return '{"error": "No response from LLM"}';
-        // }
+        let convertedMessages: vscode.LanguageModelChatMessage[] = [];
+        organizedMessages.forEach((message) => {
+            if (message.role === 'system') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatSystemMessage(message.content)
+                );
+            } else if (message.role === 'user') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatUserMessage(
+                        message.content as string
+                    )
+                );
+            } else if (message.role === 'assistant') {
+                convertedMessages.push(
+                    new vscode.LanguageModelChatAssistantMessage(
+                        message.content as string
+                    )
+                );
+            } else {
+                console.error('Invalid message role - skipping message');
+            }
+        });
+
+        if (LLMOptions?.model === GPTModel.GPT4_Turbo) {
+            // TODO: Does this not exist?
+            // model = 'copilot-gpt-4-turbo';
+            console.warn(
+                'Copilot GPT4Turbo does not exist. Using GPT3.5 turbo instead.'
+            );
+        }
+
+        const copyOfLLMOptions = { ...LLMOptions };
+        delete copyOfLLMOptions.model;
+        const result = await retryExponential(async () => {
+            if (client && 'sendChatRequest' in client) {
+                return await client.sendChatRequest(
+                    LLMOptions?.model.Copilot.ID ?? 'copilot-gpt-3.5-turbo',
+                    convertedMessages,
+                    {
+                        modelOptions: copyOfLLMOptions,
+                    },
+                    cancellationToken ||
+                        new vscode.CancellationTokenSource().token
+                );
+            }
+        });
+        let completeResult = '';
+        if (result !== null && result !== undefined) {
+            for await (const fragment of result.stream) {
+                completeResult += fragment;
+            }
+        }
+        if (completeResult !== '' && completeResult !== undefined) {
+            if (completeResult.startsWith('I am sorry')) {
+                console.error(
+                    'LLM failed to generate an appropriate response, and I am sorry was returned'
+                );
+                return (
+                    '{"error": "LLM failed to generate a response, an I am sorry message was returned", "error_message":' +
+                    JSON.stringify(completeResult) +
+                    '}'
+                );
+            }
+            return completeResult;
+        } else {
+            console.error('No response from LLM');
+            return '{"error": "No response from LLM"}';
+        }
     }
 }
 

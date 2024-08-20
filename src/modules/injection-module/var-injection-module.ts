@@ -13,10 +13,11 @@ const modelType = LLMUtils.GPTModel.GPT3_5Turbo;
 
 export type VariableInjectionResult = {
     error?: string;
-    vulnerable?: string;
-    poisoned_responses?: Array<[string, string]>;
+    vulnerable?: string; // Yes, No, Maybe
+    poisoned_responses?: Array<[string, string, string]>;
     total_attempts?: number;
     total_variables_in_prompt?: number;
+    attack?: string;
 };
 
 async function checkVariableInjection(
@@ -102,8 +103,9 @@ async function checkVariableInjection(
         // return { error: 'No response from Azure OpenAI' };
     }
     let attackTuples = AttacksJson.attacks;
-    let poisoned_responses_array: Array<[string, string]> = Array();
-    let maybe_poisoned_responses_array: Array<[string, string]> = Array();
+    let poisoned_responses_array: Array<[string, string, string]> = Array();
+    let maybe_poisoned_responses_array: Array<[string, string, string]> =
+        Array();
     // sentiment analyzer definition
     // var analyzer = new SentimentAnalyzer('English', PorterStemmer, 'senticon');
     // let default_sentiment = analyzer.getSentiment(default_response.split(' '));
@@ -131,7 +133,7 @@ async function checkVariableInjection(
 
     for (let i = 0; i < attack_results.length; i++) {
         // console.log(attack_results[i]);
-        // let attack = attack_results[i][0];
+        let attack = attack_results[i][0];
         let poisoned_responses_temp = attack_results[i][1];
         let maybe_poisoned_responses_temp = attack_results[i][2];
         // let sentiment_differences_temp = attack_results[i][3];
@@ -271,12 +273,11 @@ async function processInjection(
                     // if it's a JSON
                     if (json.error && !json.error.includes('I am sorry')) {
                         // attack detected
-                        if (json.error_message) {
-                            poisoned_responses.push([
-                                injectionPointVariable,
-                                JSON.stringify(json.error_message),
-                            ]);
-                        }
+                        poisoned_responses.push([
+                            injectionPointVariable,
+                            JSON.stringify(json),
+                            attack,
+                        ]);
                     }
                 } catch (e) {
                     // not a JSON
@@ -284,6 +285,7 @@ async function processInjection(
                     poisoned_responses.push([
                         injectionPointVariable,
                         JSON.stringify(injectedResult),
+                        attack,
                     ]);
                 }
             }
@@ -318,6 +320,18 @@ async function processInjection(
             // ]);
             else {
                 // ask chatgpt to compare the attack response with the default response and check if the attack response is similar in tone , goal, sentiment to the default response
+
+                // if injected results is a json that contains error, and error_messge starts with "I am sorry", change  injectedResult to error_message contents
+
+                // parse injected result to json
+                try {
+                    const json = JSON.parse(injectedResult);
+                    if (json.error && json.error.includes('I am sorry')) {
+                        injectedResult = json.error;
+                    }
+                } catch (e) {
+                    // not a JSON
+                }
                 const prompt_list = [defaultResponse, injectedResult];
                 for (let i = 0; i < prompt_list.length; i++) {
                     let value = '{{' + comparisonVariablesToInject[i] + '}}';

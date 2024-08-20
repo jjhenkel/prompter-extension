@@ -241,9 +241,9 @@ async function _patchValue(
         } catch (error) {
             console.error('Error during LLM completion:', error);
             return JSON.parse(
-                '{"error": "Issue during LLM completion", "error_message": "' +
-                    error +
-                    '"}'
+                '{"error": "Issue during LLM completion", "error_message":' +
+                    JSON.stringify(error) +
+                    '}'
             );
         }
     }

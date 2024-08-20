@@ -454,6 +454,7 @@ export function canonizePromptWithTreeSitter(
                 ];
             }
         }
+        // assume the default of joining for other cases (addition, redirection, fstring, etc.).
         let tempStr = childrenValues?.join('');
         if (tempStr?.endsWith('+"')) {
             // remove the last concatenation operator
