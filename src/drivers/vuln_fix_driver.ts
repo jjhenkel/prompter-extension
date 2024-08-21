@@ -8,7 +8,7 @@ import { PromptMetadata, PromptTemplateHole } from '../modules/prompt-finder';
 import { canonizeStringWithLLM } from '../modules/prompt-finder/canonization';
 // import { getClient } from '../modules/LLMUtils';
 import * as LLMUtils from '../modules/LLMUtils'; // Add this line to import the LLMUtils module
-import { fixVulnerabilityInjection } from 'src/modules/injection-fix-module/injection-fix-module';
+import { fixVulnerabilityInjection } from '../modules/injection-fix-module/injection-fix-module';
 // import { fixGenderBias } from '../modules/bias-fix-modules/vulnerability-bias-fix-module';
 // load the data from the json file
 
@@ -121,13 +121,14 @@ async function main() {
         exit();
     }
 
-    let file_content =   fs.readFileSync('/Users/dhiaelhaqrzig/VSCodeProjects/prompter-extension/data/promptsToFix/list_vulnerable.json', 'utf8');
-    
+    let file_content = fs.readFileSync(
+        'C:/Users/t-drzig/Documents/VS Code/prompter-extension/data/promptsToFix/list_vulnerable.json',
+        'utf8'
+    );
+
     // remove tokens that might cause json parsing issues
 
-
-    const biasedPrompts: string[] = JSON.parse(file_content      
-    );
+    const biasedPrompts: string[] = JSON.parse(file_content);
     console.log('Biased Prompts number:', biasedPrompts.length);
 
     let results = [];
@@ -144,14 +145,16 @@ async function main() {
 
     results = await Promise.all(vulnerabilityFixPromises_0);
     if (
-        fs.existsSync('/Users/dhiaelhaqrzig/VSCodeProjects/prompter-extension/src/drivers/results/vulnerability-fix-results.json')
+        fs.existsSync(
+            'C:/Users/t-drzig/Documents/VS Code/prompter-extension/src/drivers/results/vulnerability-fix-results.json'
+        )
     ) {
         fs.unlinkSync(
-            '/Users/dhiaelhaqrzig/VSCodeProjects/prompter-extension/src/drivers/results/vulnerability-fix-results.json'
+            'C:/Users/t-drzig/Documents/VS Code/prompter-extension/src/drivers/results/vulnerability-fix-results.json'
         );
     }
     fs.writeFileSync(
-        '/Users/dhiaelhaqrzig/VSCodeProjects/prompter-extension/src/drivers/results/vulnerability-fix-results.json',
+        'C:/Users/t-drzig/Documents/VS Code/prompter-extension/src/drivers/results/vulnerability-fix-results.json',
         JSON.stringify(results)
     );
     console.log('results done');

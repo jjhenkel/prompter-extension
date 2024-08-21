@@ -105,7 +105,7 @@ async function processSexBiasPromptSetFix(
             templateValues: tempPromptMeta.templateValues,
             result: result,
         };
-    } catch (e) {   
+    } catch (e) {
         console.log('Error processing prompt' + temp_id + '.');
         console.log(JSON.stringify(e));
     }
@@ -120,13 +120,14 @@ async function main() {
         exit();
     }
 
-    let file_content =   fs.readFileSync('/Users/dhiaelhaqrzig/VSCodeProjects/prompter-extension/data/promptsToFix/list_sexuality_bias.json', 'utf8');
-    
+    let file_content = fs.readFileSync(
+        'C:/Users/t-drzig/Documents/VS Code/prompter-extension/data/promptsToFix/list_sexuality_bias.json',
+        'utf8'
+    );
+
     // remove tokens that might cause json parsing issues
 
-
-    const biasedPrompts: string[] = JSON.parse(file_content      
-    );
+    const biasedPrompts: string[] = JSON.parse(file_content);
     console.log('Biased Prompts number:', biasedPrompts.length);
 
     let results = [];
@@ -137,20 +138,22 @@ async function main() {
     // let resultsFiveVar = [];
     // let resultsFivePlusVar = [];
     console.log('running sexuality-bias fix');
-    const sexualityFixPromises_0 = biasedPrompts.slice(0,5).map(async (prompt) => {
+    const sexualityFixPromises_0 = biasedPrompts.map(async (prompt) => {
         return await processSexBiasPromptSetFix(prompt, ids_generated);
     });
 
     results = await Promise.all(sexualityFixPromises_0);
     if (
-        fs.existsSync('/Users/dhiaelhaqrzig/VSCodeProjects/prompter-extension/src/drivers/results/sexuality-fix-results.json')
+        fs.existsSync(
+            'C:/Users/t-drzig/Documents/VS Code/prompter-extension/src/drivers/results/sexuality-fix-results.json'
+        )
     ) {
         fs.unlinkSync(
-            '/Users/dhiaelhaqrzig/VSCodeProjects/prompter-extension/src/drivers/results/sexuality-fix-results.json'
+            'C:/Users/t-drzig/Documents/VS Code/prompter-extension/src/drivers/results/sexuality-fix-results.json'
         );
     }
     fs.writeFileSync(
-        '/Users/dhiaelhaqrzig/VSCodeProjects/prompter-extension/src/drivers/results/sexuality-fix-results.json',
+        'C:/Users/t-drzig/Documents/VS Code/prompter-extension/src/drivers/results/sexuality-fix-results.json',
         JSON.stringify(results)
     );
     console.log('results done');
