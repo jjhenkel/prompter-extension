@@ -5,7 +5,7 @@ import path from 'path';
 import { PromptMetadata } from '../prompt-finder';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import * as LLMUtils from '../LLMUtils';
-import { Position } from 'vscode';
+// import { Position } from 'vscode';
 import checkVariableInjection, {
     VariableInjectionResult,
 } from '../injection-module/var-injection-module';
@@ -95,7 +95,7 @@ export async function fixVulnerabilityInjection(
     // }
 
     let fixedPrompts: Array<string> = [];
-    const numberOfSuggestions = 5;
+    const numberOfSuggestions = 1;
     const maxNumberOfGenerationAttempts = 10;
     while (
         InjectionVulnerabilityFixPromises.length !== 0 &&
@@ -138,10 +138,10 @@ export async function fixVulnerabilityInjection(
                         id: '',
                         rawText: '',
                         rawTextOfParentCall: '',
-                        startLocation: new Position(0, 0),
-                        endLocation: new Position(0, 0),
-                        parentCallStartLocation: new Position(0, 0),
-                        parentCallEndLocation: new Position(0, 0),
+                        startLocation: 0,
+                        endLocation: 0,
+                        parentCallStartLocation: 0,
+                        parentCallEndLocation: 0,
                         templateValues: templateHoles,
                         associatedParameters: {},
                         sourceFilePath: inputPrompt.sourceFilePath,
@@ -216,7 +216,7 @@ export async function fixVulnerabilityInjection(
                 }
             }
             //  return when enough prompts generated
-            if (fixedPrompts.length >= 1) {
+            if (fixedPrompts.length >= numberOfSuggestions) {
                 break;
             }
         } catch (e) {

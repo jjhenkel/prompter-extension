@@ -4,7 +4,8 @@ import * as fs from 'fs';
 import path from 'path';
 import { PromptMetadata } from '../prompt-finder';
 import { patchHoles, unpatchHoles } from '../prompt-finder/hole-patching';
-import checkGenderBias from '../bias-modules/gender-bias-module';
+// import checkGenderBias from '../bias-modules/gender-bias-module';
+import checkRaceBias from '../bias-modules/race-bias-module';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
 import * as LLMUtils from '../LLMUtils';
 // import { Position } from 'vscode';
@@ -16,19 +17,19 @@ export type serializedPrompt = {
     injectedVariables?: Array<string>;
 };
 
-export type fixGenderBiasResult = {
+export type fixRaceBiasResult = {
     prompts: Array<string>;
     unresolvedKeys: Array<string[]>;
 };
 
-export async function fixGenderBias(
+export async function fixRaceBias(
     inputPrompt: PromptMetadata
-): Promise<JSONSchemaObject | fixGenderBiasResult> {
+): Promise<JSONSchemaObject | fixRaceBiasResult> {
     // inputPrompt: PromptMetadata
     // extract the prompt from the yaml file
     let biasFixPromptYaml: Array<serializedPrompt> = yaml.load(
         fs.readFileSync(
-            path.resolve(__dirname, 'gender_fix_prompt_1.yaml'),
+            path.resolve(__dirname, 'race_fix_prompt_1.yaml'),
             'utf8'
         )
     ) as Array<serializedPrompt>;
@@ -40,8 +41,8 @@ export async function fixGenderBias(
         (prompt) => prompt.role === 'user'
     );
     if (!biasFixSystemPrompt || !biasFixUserPrompt) {
-        console.log(' Gender Bias Fix Prompts not found');
-        return { error: 'Gender Bias Fix Prompts not found' };
+        console.log(' race Bias Fix Prompts not found');
+        return { error: 'race Bias Fix Prompts not found' };
     }
     if (!biasFixUserPrompt.injectedVariables) {
         console.log('Injected variables in Biased Fix User Prompt not found');
@@ -51,7 +52,7 @@ export async function fixGenderBias(
     }
     let maybeBiasFixPromptYaml: Array<serializedPrompt> = yaml.load(
         fs.readFileSync(
-            path.resolve(__dirname, 'may_gender_fix_prompt_1.yaml'),
+            path.resolve(__dirname, 'may_race_fix_prompt_1.yaml'),
             'utf8'
         )
     ) as Array<serializedPrompt>;
@@ -63,8 +64,8 @@ export async function fixGenderBias(
         (prompt) => prompt.role === 'user'
     );
     if (!maybeBiasFixSystemPrompt || !maybeBiasFixUserPrompt) {
-        console.log(' Possible Gender Bias Fix Prompts not found');
-        return { error: 'Possible Gender Bias Fix Prompts not found' };
+        console.log(' Possible race Bias Fix Prompts not found');
+        return { error: 'Possible race Bias Fix Prompts not found' };
     }
     if (!maybeBiasFixUserPrompt.injectedVariables) {
         console.log(
@@ -74,16 +75,16 @@ export async function fixGenderBias(
             error: 'Injected in Maybe Biased Fix  User Prompt variables not found',
         };
     }
-    let initialGenderBiasCheck = await checkGenderBias(inputPrompt);
-    if (initialGenderBiasCheck.error) {
-        return { error: initialGenderBiasCheck.error };
+    let initialraceBiasCheck = await checkRaceBias(inputPrompt);
+    if (initialraceBiasCheck.error) {
+        return { error: initialraceBiasCheck.error };
     }
     if (
-        !initialGenderBiasCheck.gender_biased &&
-        !initialGenderBiasCheck.may_cause_gender_bias
+        !initialraceBiasCheck.race_biased &&
+        !initialraceBiasCheck.may_cause_race_bias
     ) {
         return {
-            error: 'Prompt is not gender biased and should not cause gender-biased responses. No need to fix.',
+            error: 'Prompt is not race biased and should not cause race-biased responses. No need to fix.',
         };
     }
     // extract the system prompt from the yaml file
@@ -96,27 +97,27 @@ export async function fixGenderBias(
         let value = inputPrompt.templateValues[key].defaultValue;
         patchedPrompt = patchedPrompt.replaceAll('{{' + key + '}}', value);
     }
-    let genderBiasFixPromises = [];
-    let maybeGenderBiasFixPromises = [];
+    let raceBiasFixPromises = [];
+    let mayberaceBiasFixPromises = [];
     let fix_attempt_count = 0;
 
-    if (initialGenderBiasCheck.gender_biased === true) {
+    if (initialraceBiasCheck.race_biased === true) {
         // inject the prompt and the reasoning into the bias fix prompt
         let tempBiasFixUserPrompt = prepareFixPrompt(
             biasFixUserPrompt,
             patchedPrompt,
-            initialGenderBiasCheck
+            initialraceBiasCheck
         );
-        genderBiasFixPromises.push(
+        raceBiasFixPromises.push(
             processPromptFix(biasFixSystemPrompt.content, tempBiasFixUserPrompt)
         );
-    } else if (initialGenderBiasCheck.may_cause_gender_bias === true) {
+    } else if (initialraceBiasCheck.may_cause_race_bias === true) {
         let tempMaybeBiasFixUserPrompt = prepareFixPrompt(
             maybeBiasFixUserPrompt,
             patchedPrompt,
-            initialGenderBiasCheck
+            initialraceBiasCheck
         );
-        maybeGenderBiasFixPromises.push(
+        mayberaceBiasFixPromises.push(
             processPromptFix(
                 maybeBiasFixSystemPrompt.content,
                 tempMaybeBiasFixUserPrompt
@@ -128,26 +129,26 @@ export async function fixGenderBias(
     const numberOfSuggestions = 1;
     const maxNumberOfGenerationAttempts = 10;
     while (
-        (genderBiasFixPromises.length !== 0 ||
-            maybeGenderBiasFixPromises.length !== 0) &&
+        (raceBiasFixPromises.length !== 0 ||
+            mayberaceBiasFixPromises.length !== 0) &&
         (fixedPrompts.length < numberOfSuggestions ||
             fix_attempt_count < maxNumberOfGenerationAttempts)
     ) {
         fix_attempt_count += 1;
-        let fixResultsJSONs = await Promise.all(genderBiasFixPromises);
+        let fixResultsJSONs = await Promise.all(raceBiasFixPromises);
         // flatten the array of prompts
         let allPrompts: Array<string> = [];
         for (let i = 0; i < fixResultsJSONs.length; i++) {
             if (!fixResultsJSONs[i].error) {
-                let fixResult = fixResultsJSONs[i] as fixGenderBiasResult;
+                let fixResult = fixResultsJSONs[i] as fixRaceBiasResult;
                 allPrompts = allPrompts.concat(fixResult.prompts);
             }
         }
-        genderBiasFixPromises = [];
-        let genderBiasCheckPromises = [];
+        raceBiasFixPromises = [];
+        let raceBiasCheckPromises = [];
         for (let i = 0; i < allPrompts.length; i++) {
-            genderBiasCheckPromises.push(
-                checkGenderBias({
+            raceBiasCheckPromises.push(
+                checkRaceBias({
                     normalizedText: allPrompts[i],
                     // dummy parameters
                     id: '',
@@ -164,27 +165,25 @@ export async function fixGenderBias(
             );
         }
 
-        const genderBiasCheckResults = await Promise.all(
-            genderBiasCheckPromises
-        );
+        const raceBiasCheckResults = await Promise.all(raceBiasCheckPromises);
 
-        for (let i = 0; i < genderBiasCheckResults.length; i++) {
-            if (!genderBiasCheckResults[i].error) {
+        for (let i = 0; i < raceBiasCheckResults.length; i++) {
+            if (!raceBiasCheckResults[i].error) {
                 let prompt = allPrompts[i];
-                let genderBiasCheckResult = genderBiasCheckResults[
+                let raceBiasCheckResult = raceBiasCheckResults[
                     i
                 ] as JSONSchemaObject;
                 if (
-                    !genderBiasCheckResult.gender_biased &&
-                    !genderBiasCheckResult.may_cause_gender_bias
+                    !raceBiasCheckResult.race_biased &&
+                    !raceBiasCheckResult.may_cause_race_bias
                 ) {
                     fixedPrompts.push(prompt);
-                } else if (initialGenderBiasCheck.may_cause_gender_bias) {
-                    maybeGenderBiasFixPromises.push(
+                } else if (initialraceBiasCheck.may_cause_race_bias) {
+                    mayberaceBiasFixPromises.push(
                         processPromptFix(maybeBiasFixUserPrompt.content, prompt)
                     );
                 } else {
-                    genderBiasFixPromises.push(
+                    raceBiasFixPromises.push(
                         processPromptFix(biasFixUserPrompt.content, prompt)
                     );
                 }
@@ -195,14 +194,12 @@ export async function fixGenderBias(
         if (fixedPrompts.length >= numberOfSuggestions) {
             break;
         }
-        let maybeFixResultsJSONs = await Promise.all(
-            maybeGenderBiasFixPromises
-        );
-        maybeGenderBiasFixPromises = [];
+        let maybeFixResultsJSONs = await Promise.all(mayberaceBiasFixPromises);
+        mayberaceBiasFixPromises = [];
         allPrompts = [];
         for (let i = 0; i < maybeFixResultsJSONs.length; i++) {
             if (!maybeFixResultsJSONs[i].error) {
-                let fixResult = maybeFixResultsJSONs[i] as fixGenderBiasResult;
+                let fixResult = maybeFixResultsJSONs[i] as fixRaceBiasResult;
                 allPrompts = allPrompts.concat(fixResult.prompts);
             } else {
                 console.log('Error in maybe fix');
@@ -210,11 +207,11 @@ export async function fixGenderBias(
             }
         }
 
-        let maybeGenderBiasCheckPromises = [];
+        let mayberaceBiasCheckPromises = [];
         for (let i = 0; i < allPrompts.length; i++) {
             let prompt = allPrompts[i];
-            maybeGenderBiasCheckPromises.push(
-                checkGenderBias({
+            mayberaceBiasCheckPromises.push(
+                checkRaceBias({
                     normalizedText: prompt,
                     // dummy parameters
                     id: '',
@@ -230,26 +227,26 @@ export async function fixGenderBias(
                 })
             );
         }
-        const maybeGenderBiasCheckResults = await Promise.all(
-            maybeGenderBiasCheckPromises
+        const mayberaceBiasCheckResults = await Promise.all(
+            mayberaceBiasCheckPromises
         );
-        for (let i = 0; i < maybeGenderBiasCheckResults.length; i++) {
-            if (!maybeGenderBiasCheckResults[i].error) {
+        for (let i = 0; i < mayberaceBiasCheckResults.length; i++) {
+            if (!mayberaceBiasCheckResults[i].error) {
                 let prompt = allPrompts[i];
-                let genderBiasCheckResult = maybeGenderBiasCheckResults[
+                let raceBiasCheckResult = mayberaceBiasCheckResults[
                     i
                 ] as JSONSchemaObject;
                 if (
-                    !genderBiasCheckResult.gender_biased &&
-                    !genderBiasCheckResult.may_cause_gender_bias
+                    !raceBiasCheckResult.race_biased &&
+                    !raceBiasCheckResult.may_cause_race_bias
                 ) {
                     fixedPrompts.push(prompt);
-                } else if (initialGenderBiasCheck.may_cause_gender_bias) {
-                    maybeGenderBiasFixPromises.push(
+                } else if (initialraceBiasCheck.may_cause_race_bias) {
+                    mayberaceBiasFixPromises.push(
                         processPromptFix(maybeBiasFixUserPrompt.content, prompt)
                     );
                 } else {
-                    genderBiasFixPromises.push(
+                    raceBiasFixPromises.push(
                         processPromptFix(biasFixUserPrompt.content, prompt)
                     );
                 }
@@ -267,13 +264,13 @@ export async function fixGenderBias(
     return {
         prompts: fixedPrompts,
         unresolvedKeys: unresolvedKeys,
-    } as fixGenderBiasResult;
+    } as fixRaceBiasResult;
 }
 
 function prepareFixPrompt(
     biasFixUserPrompt: serializedPrompt,
     patchedPrompt: string,
-    initialGenderBiasCheck: JSONSchemaObject
+    initialraceBiasCheck: JSONSchemaObject
 ) {
     if (!biasFixUserPrompt.injectedVariables) {
         console.log('Injected variables in Biased Fix User Prompt not found');
@@ -282,7 +279,7 @@ function prepareFixPrompt(
     let tempBiasFixUserPrompt = biasFixUserPrompt.content;
     let toInject: string[] = [
         patchedPrompt,
-        JSON.stringify(initialGenderBiasCheck.reasoning),
+        JSON.stringify(initialraceBiasCheck.reasoning),
     ];
     for (let i = 0; i < toInject.length; i++) {
         tempBiasFixUserPrompt = tempBiasFixUserPrompt.replaceAll(
