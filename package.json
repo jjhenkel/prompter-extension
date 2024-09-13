@@ -1,6 +1,6 @@
 {
     "name": "prompter",
-    "displayName": "prompter",
+    "displayName": "PromptDoctor",
     "description": "",
     "version": "0.0.1",
     "engines": {
@@ -24,7 +24,7 @@
         "chatParticipants": [
             {
                 "id": "prompter",
-                "name": "Prompter",
+                "name": "PromptDoctor",
                 "description": "Let's analyze and improve some prompts",
                 "isSticky": true,
                 "commands": [
@@ -37,12 +37,28 @@
                         "description": "Attempt to fix gender bias and bias potential in a prompt"
                     },
                     {
+                        "name": "fix-race-bias",
+                        "description": "Attempt to fix race bias and bias potential in a prompt"
+                    },
+                    {
+                        "name": "fix-sexuality-bias",
+                        "description": "Attempt to fix sexuality bias and bias potential in a prompt"
+                    },
+                    {
                         "name": "fix-injection-vulnerability",
                         "description": "Attempt to fix injection vulnerability in a prompt"
                     },
                     {
-                        "name": "analyze-bias",
+                        "name": "analyze-gender-bias",
                         "description": "Analyze bias for a selected prompt"
+                    },
+                    {
+                        "name": "analyze-race-bias",
+                        "description": "Analyze race for a selected prompt"
+                    },
+                    {
+                        "name": "analyze-sexuality-bias",
+                        "description": "Analyze sexuality for a selected prompt"
                     },
                     {
                         "name": "analyze-injection-vulnerability",
@@ -53,12 +69,16 @@
                         "description": "Select or define a system prompt for Prompt Analysis tasks"
                     },
                     {
-                        "name": "suggest-by-rules",
-                        "description": "Suggest improvements for a prompt based on OpenAI rules"
+                        "name": "evaluate-prompt-performance",
+                        "description": "Benchmark a prompt with synthetic data"
+                    },
+                    {
+                        "name": "optimize-prompt",
+                        "description": "Optimize a prompt with synthetic data and automatic rewriting"
                     },
                     {
                         "name": "help",
-                        "description": "Get help with using prompter"
+                        "description": "Get help with using prompt doctor"
                     },
                     {
                         "name": "parse-prompt",

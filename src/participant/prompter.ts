@@ -69,46 +69,46 @@ export class PrompterParticipant {
                 token: vscode.CancellationToken
             ) {
                 return [
-                    {
-                        prompt: 'find-prompts',
-                        command: 'find-prompts',
-                        label: 'Find prompts in your workspace',
-                    },
-                    {
-                        prompt: 'fix-gender-bias',
-                        command: 'fix-gender-bias',
-                        label: 'Attempt to fix gender bias and bias potential in a prompt',
-                    },
-                    {
-                        prompt: 'fix-injection-vulnerability',
-                        command: 'fix-injection-vulnerability',
-                        label: 'Attempt to fix injection vulnerability in a prompt',
-                    },
-                    {
-                        prompt: 'analyze-injection-vulnerability',
-                        command: 'analyze-injection-vulnerability',
-                        label: 'Analyze a prompt for injection vulnerability',
-                    },
-                    {
-                        prompt: 'parse-prompt',
-                        command: 'parse-prompt',
-                        label: "Parse and show a prompt's internal representation and its associated generated default values",
-                    },
-                    {
-                        prompt: 'select-system-prompt',
-                        command: 'select-system-prompt',
-                        label: 'Select a system prompt to use for the different analyses on the saved prompt',
-                    },
-                    {
-                        prompt: 'analyze-bias',
-                        command: 'analyze-bias',
-                        label: 'Analyze bias for a selected prompt',
-                    },
-                    {
-                        prompt: 'suggest-by-rules',
-                        command: 'suggest-by-rules',
-                        label: 'Suggest a new prompt using rules',
-                    },
+                    // {
+                    //     prompt: 'find-prompts',
+                    //     command: 'find-prompts',
+                    //     label: 'Find prompts in your workspace',
+                    // },
+                    // {
+                    //     prompt: 'fix-gender-bias',
+                    //     command: 'fix-gender-bias',
+                    //     label: 'Attempt to fix gender bias and bias potential in a prompt',
+                    // },
+                    // {
+                    //     prompt: 'fix-injection-vulnerability',
+                    //     command: 'fix-injection-vulnerability',
+                    //     label: 'Attempt to fix injection vulnerability in a prompt',
+                    // },
+                    // {
+                    //     prompt: 'analyze-injection-vulnerability',
+                    //     command: 'analyze-injection-vulnerability',
+                    //     label: 'Analyze a prompt for injection vulnerability',
+                    // },
+                    // {
+                    //     prompt: 'parse-prompt',
+                    //     command: 'parse-prompt',
+                    //     label: "Parse and show a prompt's internal representation and its associated generated default values",
+                    // },
+                    // {
+                    //     prompt: 'select-system-prompt',
+                    //     command: 'select-system-prompt',
+                    //     label: 'Select a system prompt to use for the different analyses on the saved prompt',
+                    // },
+                    // {
+                    //     prompt: 'analyze-gender-bias',
+                    //     command: 'analyze-gender-bias',
+                    //     label: 'Analyze bias for a selected prompt',
+                    // },
+                    // {
+                    //     prompt: 'suggest-by-rules',
+                    //     command: 'suggest-by-rules',
+                    //     label: 'Suggest a new prompt using rules',
+                    // },
                     {
                         prompt: 'help',
                         command: 'help',
@@ -202,9 +202,9 @@ export class PrompterParticipant {
                 await this._handleHelp(request, context, stream, token);
                 return { metadata: { command: 'help' } };
             }
-            case 'analyze-bias': {
+            case 'analyze-gender-bias': {
                 await this._handleAnalyzeBias(request, context, stream, token);
-                return { metadata: { command: 'analyze-bias' } };
+                return { metadata: { command: 'analyze-gender-bias' } };
             }
             case 'suggest-by-rules': {
                 await this._handleSuggestByRules(
@@ -217,7 +217,7 @@ export class PrompterParticipant {
             }
             default: {
                 stream.markdown(
-                    "Hey, I'm prompter! I can help you find prompts, analyze bias, and more. Try typing `/` to see what I can do."
+                    "Hey, I'm PromptDoctor! I can help you find prompts, analyze bias, and more. Try typing `/` to see what I can do."
                 );
                 return { metadata: { command: '' } };
             }
@@ -798,7 +798,7 @@ export class PrompterParticipant {
             
             Here are the sub-commands I support:
               - \`/find-prompts\`: Find prompts in your workspace
-              - \`/analyze-bias\`: Analyze bias for a selected prompt
+              - \`/analyze-gender-bias\`: Analyze bias for a selected prompt
               - \`/help\`: Show this help message
         `)
         );
@@ -971,7 +971,7 @@ export class PrompterParticipant {
                     stream.markdown(
                         this.handleGenderBiasAnalysis(biasAnalysis)
                     );
-                    return { metadata: { command: 'analyze-bias' } };
+                    return { metadata: { command: 'analyze-gender-bias' } };
                 }
             }
         }
@@ -983,16 +983,16 @@ export class PrompterParticipant {
             stream.markdown('**📊 Bias Analysis Results**:');
             stream.markdown('\n\n');
             stream.markdown(this.handleGenderBiasAnalysis(biasAnalysis));
-            return { metadata: { command: 'analyze-bias' } };
+            return { metadata: { command: 'analyze-gender-bias' } };
         } else {
             if (editor) {
                 stream.markdown(
                     'No prompt found saved and no text selected in active editor'
                 );
-                return { metadata: { command: 'analyze-bias' } };
+                return { metadata: { command: 'analyze-gender-bias' } };
             }
             stream.markdown('No prompt found saved and no active editor');
-            return { metadata: { command: 'analyze-bias' } };
+            return { metadata: { command: 'analyze-gender-bias' } };
         }
     }
 
