@@ -16,6 +16,11 @@ loadTikTokenModule();
 
 // define interface for the config json file
 
+const MODEL_SELECTOR: vscode.LanguageModelChatSelector = {
+    vendor: 'copilot',
+    family: 'gpt-3.5-turbo',
+};
+
 async function retryExponential<T>(
     fn: () => Promise<T>,
     maxTry: number = 3,
@@ -125,13 +130,13 @@ export function setAPIKey(APIKey: string) {
     return config;
 }
 
-export function getClient() {
+export async function getClient() {
     if (configuration.LLM_Backend === Backend.Azure) {
         return getAzureClient();
     } else if (configuration.LLM_Backend === Backend.OpenAI) {
         return getOpenAIClient();
     } else if (configuration.LLM_Backend === Backend.Copilot) {
-        return vscode.lm;
+        return await vscode.lm.selectChatModels(MODEL_SELECTOR);
     }
 }
 
@@ -176,7 +181,7 @@ export async function sendChatRequestAndGetDirectResponse(
     LLMOptions?: { [name: string]: any },
     cancellationToken?: vscode.CancellationToken
 ): Promise<string | OpenAI.Chat.ChatCompletion | undefined> {
-    let client = getClient();
+    let client = await getClient();
     if (client === undefined || client === null) {
         console.error('Client is undefined');
         return '{"error": "Issue during LLM Backend configuration"}';
@@ -220,18 +225,29 @@ export async function sendChatRequestAndGetDirectResponse(
         let convertedMessages: vscode.LanguageModelChatMessage[] = [];
         organizedMessages.forEach((message) => {
             if (message.role === 'system') {
+                // convertedMessages.push(
+                //     new vscode.LanguageModelChatMessage(
+                //         LanguageModelChatMessageRole.System,
+                //         message.content
+                //     )
+                // );
                 convertedMessages.push(
-                    new vscode.LanguageModelChatSystemMessage(message.content)
+                    new vscode.LanguageModelChatMessage(
+                        vscode.LanguageModelChatMessageRole.Assistant,
+                        message.content as string
+                    )
                 );
             } else if (message.role === 'user') {
                 convertedMessages.push(
-                    new vscode.LanguageModelChatUserMessage(
+                    new vscode.LanguageModelChatMessage(
+                        vscode.LanguageModelChatMessageRole.User,
                         message.content as string
                     )
                 );
             } else if (message.role === 'assistant') {
                 convertedMessages.push(
-                    new vscode.LanguageModelChatAssistantMessage(
+                    new vscode.LanguageModelChatMessage(
+                        vscode.LanguageModelChatMessageRole.Assistant,
                         message.content as string
                     )
                 );
@@ -251,21 +267,14 @@ export async function sendChatRequestAndGetDirectResponse(
         const copyOfLLMOptions = { ...LLMOptions };
         delete copyOfLLMOptions.model;
         const result = await retryExponential(async () => {
-            if (client && 'sendChatRequest' in client) {
-                return await client.sendChatRequest(
-                    LLMOptions?.model.Copilot.ID ?? 'copilot-gpt-3.5-turbo',
-                    convertedMessages,
-                    {
-                        modelOptions: copyOfLLMOptions,
-                    },
-                    cancellationToken ||
-                        new vscode.CancellationTokenSource().token
-                );
-            }
+            const [model] = await vscode.lm.selectChatModels(MODEL_SELECTOR);
+            return await model.sendRequest(convertedMessages, {
+                ...copyOfLLMOptions,
+            });
         });
         let completeResult = '';
         if (result !== null && result !== undefined) {
-            for await (const fragment of result.stream) {
+            for await (const fragment of result.text) {
                 completeResult += fragment;
             }
         }
@@ -295,7 +304,7 @@ export async function sendChatRequest(
     cleanJsonOutput?: boolean,
     addFailureMessage?: boolean
 ): Promise<string> {
-    let client = getClient();
+    let client = await getClient();
     if (client === undefined || client === null) {
         console.error('Client is undefined');
         return '{"error": "Issue during LLM Backend configuration"}';

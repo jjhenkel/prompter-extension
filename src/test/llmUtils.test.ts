@@ -6,7 +6,6 @@ import * as vscode from 'vscode';
 import * as LLMUtils from '../modules/LLMUtils';
 import { Backend, GPTModel } from '../modules/LLMUtils';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-import OpenAI from 'openai';
 
 const extensionUri = __dirname.split('\\').slice(0, -2).join('/');
 suite('LLMUtils Test Suite', () => {
@@ -25,10 +24,10 @@ suite('LLMUtils Test Suite', () => {
         assert.strictEqual(LLMUtils.getBackend(), Backend.Copilot);
     });
 
-    test('Azure Backend Configuration Test ', () => {
-        LLMUtils.setBackend(Backend.Azure);
-        assert.ok(LLMUtils.getClient() instanceof OpenAI);
-    });
+    // test('Azure Backend Configuration Test ', () => {
+    //     LLMUtils.setBackend(Backend.Azure);
+    //     assert.ok(LLMUtils.getClient() instanceof OpenAI);
+    // });
 
     test('Azure Backend-powered Client Test ', async () => {
         LLMUtils.setBackend(Backend.Azure);

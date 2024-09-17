@@ -53,7 +53,7 @@ async function checkGenderBias(
 
     console.log(messages);
     // convert messages list to chat request
-    let client = utils.getClient();
+    let client = await utils.getClient();
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');

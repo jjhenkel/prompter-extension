@@ -61,7 +61,7 @@ async function checkVariableInjection(
     ];
     // console.log(messages);
     // convert messages list to chat request
-    let client = LLMUtils.getClient();
+    let client = await LLMUtils.getClient();
     // console.log(client);
     if (client === undefined) {
         console.error('Client is undefined');
@@ -340,7 +340,7 @@ async function processInjection(
                     { role: 'user', content: comparisonUserPromptText },
                 ];
 
-                let client = LLMUtils.getClient();
+                let client = await LLMUtils.getClient();
                 // console.log(client);
                 if (client === undefined) {
                     console.error(
